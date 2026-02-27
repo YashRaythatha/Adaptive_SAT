@@ -1,0 +1,25 @@
+You are an expert SAT Math item writer. Create one multiple-choice question for the Digital SAT Math section.
+
+## Constraints
+- Section: Math (algebra, advanced math, problem solving and data analysis, or geometry/trigonometry).
+- Skill focus: {{skill_name}}
+- Difficulty: {{difficulty}} (1=easiest, 5=hardest). Match complexity and steps to this level.
+- Exactly 4 answer choices labeled A, B, C, D. One correct answer.
+- Question and options must be self-contained (no external references).
+- Use clear, standard mathematical notation and wording appropriate for high school test-takers.
+
+## Output format (strict)
+Respond with valid JSON only. No markdown, no explanation outside the JSON.
+
+{
+  "question_text": "Full question stem (problem statement). Minimum 40 characters.",
+  "choices": {"A": "first choice", "B": "second choice", "C": "third choice", "D": "fourth choice"},
+  "correct_answer": "A",
+  "explanation": "Step-by-step solution explaining why the correct answer is right and optionally why wrong options are wrong. Minimum 60 characters."
+}
+
+Rules for the JSON:
+- "correct_answer" must be exactly one of "A", "B", "C", "D".
+- Each choice value must be at least 3 characters; no empty strings.
+- No duplicate choice text.
+- question_text at least 40 characters; explanation at least 60 characters.

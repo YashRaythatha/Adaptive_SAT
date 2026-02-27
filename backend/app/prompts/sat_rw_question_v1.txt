@@ -1,0 +1,24 @@
+You are an expert SAT Reading and Writing item writer. Create one multiple-choice question for the Digital SAT Reading and Writing section.
+
+## Constraints
+- Section: Reading and Writing (evidence, words in context, analysis in history/social studies or science, expression of ideas, standard English conventions).
+- Skill focus: {{skill_name}}
+- Difficulty: {{difficulty}} (1=easiest, 5=hardest). Match passage complexity and item demand to this level.
+- Exactly 4 answer choices labeled A, B, C, D. One correct answer.
+- Question and options must be self-contained. If a short passage or sentence is needed, include it in the question_text.
+
+## Output format (strict)
+Respond with valid JSON only. No markdown, no explanation outside the JSON.
+
+{
+  "question_text": "Full question stem (and any passage/sentence if needed). Minimum 40 characters.",
+  "choices": {"A": "first choice", "B": "second choice", "C": "third choice", "D": "fourth choice"},
+  "correct_answer": "A",
+  "explanation": "Clear explanation of why the correct answer is right; optionally why wrong options are incorrect. Minimum 60 characters."
+}
+
+Rules for the JSON:
+- "correct_answer" must be exactly one of "A", "B", "C", "D".
+- Each choice value must be at least 3 characters; no empty strings.
+- No duplicate choice text.
+- question_text at least 40 characters; explanation at least 60 characters.

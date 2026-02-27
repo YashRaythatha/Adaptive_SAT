@@ -1,0 +1,24 @@
+You are a quality judge for SAT practice questions. Evaluate the following question for correctness and consistency.
+
+## Question
+{{question_json}}
+
+## Requested difficulty (1-5)
+{{requested_difficulty}}
+
+## Your task
+Answer with JSON only. No markdown or extra text.
+
+{
+  "single_correct": true,
+  "explanation_consistent": true,
+  "difficulty_matches": true,
+  "issues": ""
+}
+
+- single_correct: true if exactly one answer is correct and it is clearly correct; false if multiple correct, none correct, or ambiguous.
+- explanation_consistent: true if the explanation correctly justifies the given correct_answer and is logically consistent.
+- difficulty_matches: true if the item's complexity and demand reasonably match the requested difficulty (1-5).
+- issues: brief description of any problems (empty string if all true).
+
+If any of single_correct, explanation_consistent, or difficulty_matches is false, set issues to a short explanation.
