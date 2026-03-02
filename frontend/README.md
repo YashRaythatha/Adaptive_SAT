@@ -6,7 +6,7 @@ React 18, TypeScript, Vite, React Router v6, Tailwind. Minimal polish; focus on 
 
 1. Node 18+
 2. `npm install`
-3. Copy `.env.example` to `.env` and set `VITE_API_URL` (default http://127.0.0.1:8000)
+3. Copy `.env.example` to `.env`. Optional: set `VITE_API_URL`; if unset, frontend auto-detects backend on port 8000 or 8001.
 
 ## Run
 

@@ -17,21 +17,32 @@ from app.utils.rate_limit import wait_if_needed
 GENERATION_MODEL = "gpt-4o-mini"
 JUDGE_MODEL = "gpt-4o"
 PROMPT_VERSION = "v1"
-MAX_JSON_RETRIES = 2
+MAX_JSON_RETRIES = 4
 MAX_JUDGE_RETRIES = 2
 
 
 def _extract_json(text: str) -> dict | None:
-    """Try to parse JSON from model output (strip markdown if present)."""
-    text = text.strip()
+    """Try to parse JSON from model output (strip markdown, find JSON object)."""
+    text = (text or "").strip()
     # Remove optional markdown code block
     m = re.search(r"```(?:json)?\s*([\s\S]*?)```", text)
     if m:
         text = m.group(1).strip()
+    # Try direct parse first
     try:
         return json.loads(text)
     except json.JSONDecodeError:
-        return None
+        pass
+    # Try to find a JSON object: first { to last }
+    start = text.find("{")
+    if start >= 0:
+        end = text.rfind("}")
+        if end > start:
+            try:
+                return json.loads(text[start : end + 1])
+            except json.JSONDecodeError:
+                pass
+    return None
 
 
 def _generate_raw(client: OpenAI, section: SectionEnum, skill_name: str, difficulty: int) -> str:
@@ -88,11 +99,20 @@ def generate_question(
     skill_name = skill.name
 
     parsed: QuestionLLMOutput | None = None
+    last_raw: str | None = None
     for _ in range(MAX_JSON_RETRIES + 1):
         raw = _generate_raw(client, section, skill_name, difficulty)
+        last_raw = raw
         data = _extract_json(raw)
         if not data:
             continue
+        # Normalize choices to A,B,C,D keys if model returned lowercase
+        if "choices" in data and isinstance(data["choices"], dict):
+            choices = data["choices"]
+            if set(choices.keys()) != {"A", "B", "C", "D"} and set(k.upper() for k in choices.keys()) == {"A", "B", "C", "D"}:
+                data["choices"] = {k.upper(): (v or "").strip() for k, v in choices.items()}
+        if data.get("correct_answer"):
+            data["correct_answer"] = (data["correct_answer"] or "").strip().upper()
         try:
             parsed = QuestionLLMOutput(
                 question_text=data["question_text"],
@@ -104,7 +124,10 @@ def generate_question(
         except Exception:
             continue
     if not parsed:
-        raise ValueError("Could not produce valid question JSON after retries")
+        err_msg = "Could not produce valid question JSON after retries"
+        if last_raw:
+            err_msg += f". Last raw response (first 500 chars): {last_raw[:500]!r}"
+        raise ValueError(err_msg)
 
     # Judge for difficulty 4-5
     if difficulty >= 4:

@@ -79,6 +79,26 @@ python -m app.scripts.seed_exam_questions --target 40
 
 Use `--dry-run` to see how many would be generated per skill/difficulty without calling the API.
 
+### Verifying Math question generation
+
+To confirm MATH questions are generating correctly (prompt, JSON parsing, validation):
+
+1. **Generate one MATH question** (uses OpenAI, writes to DB):
+
+   ```bash
+   python -m app.scripts.test_math_generation --skill "Algebra" --difficulty 3
+   ```
+
+   Success prints the new question; failure prints the error (e.g. JSON parse, validation, or judge).
+
+2. **Preview existing questions** (MATH only):
+
+   ```bash
+   python -m app.scripts.preview_questions --section MATH --count 10
+   ```
+
+   Use this to spot placeholders or low-quality items after seeding.
+
 ## Schema overview
 
 - **users** — name, email, has_taken_baseline_exam

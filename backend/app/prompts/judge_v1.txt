@@ -18,7 +18,7 @@ Answer with JSON only. No markdown or extra text.
 
 - single_correct: true if exactly one answer is correct and it is clearly correct; false if multiple correct, none correct, or ambiguous.
 - explanation_consistent: true if the explanation correctly justifies the given correct_answer and is logically consistent.
-- difficulty_matches: true if the item's complexity and demand reasonably match the requested difficulty (1-5).
+- difficulty_matches: true if the item's complexity and demand reasonably match the requested difficulty (1-5). For difficulty 5, accept if the question requires substantial reasoning; do not require maximal complexity. For difficulty 4, accept if it is clearly harder than easy recall. For Math difficulty 4, accept if the problem has multiple steps, involves a system/inequality, or requires setting up an equation from context; reject only if it is a single trivial equation. For Math difficulty 5: accept if the problem involves solving an exponential or radical equation (e.g. 2^x = k using logs, or √(ax+b) = c), rational equations, or multi-step geometry/trig (not a single rule). Reject if it is: a single quadratic (vertex, roots, evaluate at a point), a simple system of two linear equations, straightforward exponential growth/decay (e.g. "doubles every X years, find after Y years"), or a single geometry rule (30-60-90, triangle inequality, area = ½bh).
 - issues: brief description of any problems (empty string if all true).
 
 If any of single_correct, explanation_consistent, or difficulty_matches is false, set issues to a short explanation.

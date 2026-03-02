@@ -14,11 +14,11 @@ FastAPI app. PostgreSQL + SQLAlchemy 2.0 + Alembic. OpenAI for question generati
 
 ## Run
 
-```bash
-uvicorn app.main:app --host 127.0.0.1 --port 8000
-```
+From repo root: `run_backend.bat` (uses port 8000, or 8001 if 8000 is in use).
 
-- API: http://127.0.0.1:8000
+Or from `backend/`: `uvicorn app.main:app --host 127.0.0.1 --port 8000`
+
+- API: http://127.0.0.1:8000 (or :8001 if 8000 was in use)
 - Docs: http://127.0.0.1:8000/docs
 
 ## Environment variables

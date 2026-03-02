@@ -3,7 +3,10 @@ Seed the question bank with enough validated questions to support the first 20 e
 with no repeats. Covers all skills (domains/topics) and difficulties 1-5.
 Only stores questions that pass validation (no placeholders).
 
-  python -m app.scripts.seed_exam_questions [--target 40] [--dry-run]
+  python -m app.scripts.seed_exam_questions [--target 40] [--section MATH] [--dry-run]
+
+  Focus on MATH only:  --section MATH
+  Focus on RW only:    --section RW
 
 Requires: OPENAI_API_KEY in .env, skills seeded, database migrated.
 """
@@ -36,7 +39,7 @@ def get_skills_ordered_for_coverage(db):
     return skills
 
 
-def run(target: int, dry_run: bool) -> None:
+def run(target: int, dry_run: bool, section_filter: str | None = None) -> None:
     if not settings.openai_api_key:
         print("OPENAI_API_KEY is not set. Set it in backend/.env to generate questions.")
         sys.exit(1)
@@ -47,6 +50,14 @@ def run(target: int, dry_run: bool) -> None:
         if not skills:
             print("No skills found. Run: python -m app.scripts.seed_skills")
             sys.exit(1)
+
+        if section_filter:
+            section_enum = SectionEnum(section_filter)
+            skills = [s for s in skills if s.section == section_enum]
+            if not skills:
+                print(f"No skills found for section {section_filter}.")
+                sys.exit(1)
+            print(f"Section filter: {section_filter} only ({len(skills)} skills)")
 
         # Build (skill_id, difficulty) list and optionally shuffle to spread domains
         combos = []
@@ -111,11 +122,17 @@ def main():
         action="store_true",
         help="Only print what would be generated; do not call OpenAI or write to DB.",
     )
+    parser.add_argument(
+        "--section",
+        type=str,
+        choices=["MATH", "RW"],
+        help="Generate only for this section (MATH or RW). Omit to generate for both.",
+    )
     args = parser.parse_args()
     if args.target < 1:
         parser.error("--target must be >= 1")
     print(f"Target: {args.target} valid questions per (skill, difficulty). Dry run: {args.dry_run}")
-    run(target=args.target, dry_run=args.dry_run)
+    run(target=args.target, dry_run=args.dry_run, section_filter=args.section)
 
 
 if __name__ == "__main__":

@@ -18,6 +18,6 @@ def wait_if_needed() -> None:
             # Wait until oldest expires
             wait = 60 - (now - _timestamps[0])
             if wait > 0:
-                time.sleep(w)
+                time.sleep(wait)
             _timestamps[:] = [t for t in _timestamps if t > time.monotonic() - 60]
         _timestamps.append(time.monotonic())

@@ -2,14 +2,14 @@
 setlocal enabledelayedexpansion
 
 set "ROOT=%~dp0"
-pushd "%ROOT%frontend" || (echo Failed to cd to frontend && exit /b 1)
+pushd "%ROOT%frontend" || (echo Failed to cd to frontend & goto :error)
 
 if not exist ".env" (
   if exist ".env.example" (
     copy /Y ".env.example" ".env" >nul
     echo Created frontend\.env from .env.example
   ) else (
-    echo Missing frontend\.env (and .env.example not found).
+    echo Missing frontend\.env - and .env.example not found.
     goto :error
   )
 )
@@ -29,7 +29,7 @@ if errorlevel 1 (
 )
 
 if not exist "node_modules" (
-  echo Installing frontend dependencies...
+  echo Installing frontend dependencies
   npm install
   if errorlevel 1 (
     echo npm install failed.
@@ -37,19 +37,23 @@ if not exist "node_modules" (
   )
 )
 
-echo.
+echo/
 echo Starting frontend at http://localhost:3000
 echo Press Ctrl+C to stop.
-echo.
+echo/
 npm run dev
+if errorlevel 1 goto :error
 goto :done
 
 :error
-echo.
+echo/
 echo Frontend failed to start.
 pause
 exit /b 1
 
 :done
+echo/
+echo Frontend stopped.
+pause
 popd
 endlocal

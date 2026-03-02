@@ -16,14 +16,19 @@ def get_skills_progress(
     user_id: UUID = Query(...),
     db: Session = Depends(get_db),
 ):
-    """Return list of { skill_name, section, mastery_score } for the user."""
+    """Return list of { skill_id, skill_name, section, mastery_score } for the user."""
     rows = (
-        db.query(Skill.name, Skill.section, UserSkillState.mastery_score)
+        db.query(Skill.id, Skill.name, Skill.section, UserSkillState.mastery_score)
         .join(UserSkillState, UserSkillState.skill_id == Skill.id)
         .filter(UserSkillState.user_id == user_id)
         .all()
     )
     return [
-        {"skill_name": r.name, "section": r.section.value, "mastery_score": r.mastery_score}
+        {
+            "skill_id": str(r.id),
+            "skill_name": r.name,
+            "section": r.section.value,
+            "mastery_score": r.mastery_score,
+        }
         for r in rows
     ]
