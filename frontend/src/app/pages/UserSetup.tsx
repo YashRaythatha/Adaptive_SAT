@@ -7,7 +7,7 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { ErrorMessage } from '../components/AnimatedComponents';
 import { useUser } from '../context/UserContext';
-import { api } from '../api/client';
+import { api, ApiError } from '../api/client';
 
 export function UserSetup() {
   const navigate = useNavigate();
@@ -46,7 +46,11 @@ export function UserSetup() {
       setUser(user);
       navigate('/');
     } catch (err) {
-      setError('Failed to create account. Please try again.');
+      const message =
+        err instanceof ApiError && err.message
+          ? err.message
+          : 'Failed to create account. Please try again.';
+      setError(message);
       setIsSubmitting(false);
     }
   };

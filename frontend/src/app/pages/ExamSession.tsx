@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import { motion } from 'motion/react';
-import { Trophy, TrendingUp, Target } from 'lucide-react';
+import { Trophy, TrendingUp, Target, Coffee } from 'lucide-react';
 import { Layout } from '../components/Layout';
 import { PageTitle, AnimatedCard } from '../components/AnimatedComponents';
 import { QuestionCard } from '../components/QuestionCard';
@@ -33,6 +33,9 @@ export function ExamSession() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [weakAreas, setWeakAreas] = useState<Array<{ skill_id: string; skill_name: string; section: string; score_from_exam: number }>>([]);
   const [weakAreasLoading, setWeakAreasLoading] = useState(false);
+  const [showBreakScreen, setShowBreakScreen] = useState(false);
+  const [breakEndsAt, setBreakEndsAt] = useState<string | null>(null);
+  const [breakSecondsRemaining, setBreakSecondsRemaining] = useState<number | null>(null);
 
   useEffect(() => {
     setSessionType('exam');
@@ -55,6 +58,13 @@ export function ExamSession() {
           const examResult = await api.getExamResult(sessionId);
           setResult(examResult);
           clearSession();
+          setLoading(false);
+          return;
+        }
+        if (advance.status === 'BREAK') {
+          setShowBreakScreen(true);
+          setBreakEndsAt(advance.break_ends_at ?? null);
+          setBreakSecondsRemaining(advance.break_duration_sec ?? 10 * 60);
           setLoading(false);
           return;
         }
@@ -117,6 +127,35 @@ export function ExamSession() {
     (currentModule - 1) * questionsPerModuleNum +
     questionOrder;
   const totalQuestions = questionsPerModuleNum * 4; // 2 sections × 2 modules
+
+  // Break countdown: update seconds remaining every second
+  useEffect(() => {
+    if (!showBreakScreen || breakEndsAt == null) return;
+    const endsAt = new Date(breakEndsAt).getTime();
+    const tick = () => {
+      const rem = Math.max(0, Math.ceil((endsAt - Date.now()) / 1000));
+      setBreakSecondsRemaining(rem);
+    };
+    tick();
+    const interval = setInterval(tick, 1000);
+    return () => clearInterval(interval);
+  }, [showBreakScreen, breakEndsAt]);
+
+  const handleContinueToMath = async () => {
+    if (!sessionId) return;
+    setLoading(true);
+    setShowBreakScreen(false);
+    try {
+      const advance = await api.advanceExam(sessionId);
+      if (advance.status === 'ACTIVE' && advance.current_section && advance.current_module != null) {
+        setCurrentSection(advance.current_section as 'RW' | 'MATH');
+        setCurrentModule(advance.current_module);
+      }
+      await loadQuestion();
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // When we have a result, fetch weak areas from latest exam for "practice these" recommendations
   useEffect(() => {
@@ -243,15 +282,65 @@ export function ExamSession() {
             </AnimatedCard>
           )}
 
-          <div className="mt-6 flex gap-4">
+          <div className="mt-6 flex flex-col sm:flex-row gap-4">
+            <Button
+              onClick={() => sessionId && navigate(`/exam/review/${sessionId}`)}
+              className="flex-1"
+            >
+              View detailed analysis & review all questions
+            </Button>
             <Button onClick={() => navigate('/exam')} variant="outline" className="flex-1">
               Take Another Exam
             </Button>
-            <Button onClick={() => navigate('/')} className="flex-1">
+            <Button onClick={() => navigate('/')} variant="outline" className="flex-1">
               Back to Dashboard
             </Button>
           </div>
         </motion.div>
+      </Layout>
+    );
+  }
+
+  if (showBreakScreen) {
+    const minutes = breakSecondsRemaining != null ? Math.floor(breakSecondsRemaining / 60) : 10;
+    const seconds = breakSecondsRemaining != null ? breakSecondsRemaining % 60 : 0;
+    return (
+      <Layout>
+        <div className="max-w-lg mx-auto text-center py-12">
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-8"
+          >
+            <div className="inline-flex p-4 rounded-full bg-amber-100 dark:bg-amber-950 mb-6">
+              <Coffee className="w-16 h-16 text-amber-600 dark:text-amber-400" />
+            </div>
+            <PageTitle>10-Minute Break</PageTitle>
+            <p className="text-muted-foreground mt-2">
+              You've finished the Reading & Writing section. Take a short break before the Math section—just like the official SAT.
+            </p>
+          </motion.div>
+          <AnimatedCard hover={false} className="mb-8">
+            {breakSecondsRemaining != null && (
+              <p className="text-4xl font-mono font-semibold text-amber-600 dark:text-amber-400 mb-2">
+                {String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}
+              </p>
+            )}
+            <p className="text-sm text-muted-foreground mb-6">
+              When you're ready, click below to start the Math section.
+            </p>
+            <Button onClick={handleContinueToMath} size="lg" className="w-full sm:w-auto">
+              Continue to Math Section
+            </Button>
+          </AnimatedCard>
+          <Button
+            variant="ghost"
+            onClick={() => setEndDialogOpen(true)}
+            className="text-muted-foreground"
+          >
+            End exam instead
+          </Button>
+        </div>
       </Layout>
     );
   }

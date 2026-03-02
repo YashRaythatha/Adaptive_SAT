@@ -7,6 +7,7 @@ import { useSession } from '../context/SessionContext';
 import { ConfirmDialog } from './ConfirmDialog';
 import { motion, AnimatePresence } from 'motion/react';
 import { api } from '../api/client';
+import { hasAdminKey } from '../api/admin';
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const { user, signOut } = useUser();
@@ -53,7 +54,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const inExam = sessionType === 'exam';
+  const inExam = sessionType === 'exam' && !!examSessionId;
 
   return (
     <div className="min-h-screen bg-background">
@@ -64,12 +65,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
             {/* Logo */}
             <div className="flex items-center gap-4">
               {inExam ? (
-                <button
-                  onClick={() => handleNavigation('/')}
-                  className="text-xl font-semibold hover:opacity-80 transition-opacity"
-                >
+                <span className="text-xl font-semibold cursor-default select-none" aria-hidden>
                   Adaptive SAT
-                </button>
+                </span>
               ) : (
                 <Link to="/" className="text-xl font-semibold hover:opacity-80 transition-opacity">
                   Adaptive SAT
@@ -94,18 +92,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               <nav className="hidden md:flex items-center gap-4" aria-label="Main navigation">
                 {inExam ? (
                   <>
-                    <button
-                      onClick={() => handleNavigation('/')}
-                      className="text-sm hover:opacity-80 transition-opacity focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-primary-foreground/50 rounded px-2 py-1"
-                    >
-                      Dashboard
-                    </button>
-                    <button
-                      onClick={() => handleNavigation('/progress')}
-                      className="text-sm hover:opacity-80 transition-opacity focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-primary-foreground/50 rounded px-2 py-1"
-                    >
-                      Progress
-                    </button>
+                    <span className="text-sm opacity-80">Exam in progress — use End Exam to leave</span>
                   </>
                 ) : (
                   <>
@@ -130,16 +117,18 @@ export function Layout({ children }: { children: React.ReactNode }) {
                     >
                       Progress
                     </NavLink>
-                    <NavLink
-                      to="/admin"
-                      className={({ isActive }) =>
-                        `text-sm transition-opacity rounded px-2 py-1 focus-visible:ring-2 focus-visible:ring-primary-foreground/50 ${
-                          isActive ? 'opacity-100 font-medium ring-2 ring-primary-foreground/30' : 'hover:opacity-80 opacity-90'
-                        }`
-                      }
-                    >
-                      Admin
-                    </NavLink>
+                    {hasAdminKey() && (
+                      <NavLink
+                        to="/admin"
+                        className={({ isActive }) =>
+                          `text-sm transition-opacity rounded px-2 py-1 focus-visible:ring-2 focus-visible:ring-primary-foreground/50 ${
+                            isActive ? 'opacity-100 font-medium ring-2 ring-primary-foreground/30' : 'hover:opacity-80 opacity-90'
+                          }`
+                        }
+                      >
+                        Admin
+                      </NavLink>
+                    )}
                   </>
                 )}
 
@@ -153,15 +142,17 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   {theme === 'light' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
                 </button>
 
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={signOut}
-                  className="text-primary-foreground hover:bg-primary-foreground/10"
-                >
-                  <LogOut className="w-4 h-4 mr-2" />
-                  Sign out
-                </Button>
+                {!inExam && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={signOut}
+                    className="text-primary-foreground hover:bg-primary-foreground/10"
+                  >
+                    <LogOut className="w-4 h-4 mr-2" />
+                    Sign out
+                  </Button>
+                )}
               </nav>
             )}
 
@@ -188,24 +179,34 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 className="md:hidden mt-4 pt-4 border-t border-primary-foreground/20 space-y-2"
                 aria-label="Mobile navigation"
               >
-                <button
-                  onClick={() => handleNavigation('/')}
-                  className="block w-full text-left py-2 text-sm hover:opacity-80 transition-opacity rounded focus-visible:ring-2 focus-visible:ring-primary-foreground/50"
-                >
-                  Dashboard
-                </button>
-                <button
-                  onClick={() => handleNavigation('/progress')}
-                  className="block w-full text-left py-2 text-sm hover:opacity-80 transition-opacity rounded focus-visible:ring-2 focus-visible:ring-primary-foreground/50"
-                >
-                  Progress
-                </button>
-                <button
-                  onClick={() => handleNavigation('/admin')}
-                  className="block w-full text-left py-2 text-sm hover:opacity-80 transition-opacity rounded focus-visible:ring-2 focus-visible:ring-primary-foreground/50"
-                >
-                  Admin
-                </button>
+                {inExam ? (
+                  <p className="text-sm opacity-90 py-2">
+                    Exam in progress — use the End Exam button on the page to leave.
+                  </p>
+                ) : (
+                  <>
+                    <button
+                      onClick={() => handleNavigation('/')}
+                      className="block w-full text-left py-2 text-sm hover:opacity-80 transition-opacity rounded focus-visible:ring-2 focus-visible:ring-primary-foreground/50"
+                    >
+                      Dashboard
+                    </button>
+                    <button
+                      onClick={() => handleNavigation('/progress')}
+                      className="block w-full text-left py-2 text-sm hover:opacity-80 transition-opacity rounded focus-visible:ring-2 focus-visible:ring-primary-foreground/50"
+                    >
+                      Progress
+                    </button>
+                    {hasAdminKey() && (
+                      <button
+                        onClick={() => handleNavigation('/admin')}
+                        className="block w-full text-left py-2 text-sm hover:opacity-80 transition-opacity rounded focus-visible:ring-2 focus-visible:ring-primary-foreground/50"
+                      >
+                        Admin
+                      </button>
+                    )}
+                  </>
+                )}
 
                 <div className="flex items-center justify-between pt-2 border-t border-primary-foreground/20">
                   <span className="text-sm">Hi, {user.name}</span>
@@ -218,15 +219,17 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   </button>
                 </div>
 
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={signOut}
-                  className="w-full text-primary-foreground hover:bg-primary-foreground/10"
-                >
-                  <LogOut className="w-4 h-4 mr-2" />
-                  Sign out
-                </Button>
+                {!inExam && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={signOut}
+                    className="w-full text-primary-foreground hover:bg-primary-foreground/10"
+                  >
+                    <LogOut className="w-4 h-4 mr-2" />
+                    Sign out
+                  </Button>
+                )}
               </motion.nav>
             )}
           </AnimatePresence>

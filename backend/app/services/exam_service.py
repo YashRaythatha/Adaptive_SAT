@@ -1,5 +1,5 @@
 """Full Digital SAT exam: blueprints, timing, routing, scoring, results."""
-from datetime import datetime
+from datetime import datetime, timedelta
 from uuid import UUID
 import random
 
@@ -370,8 +370,11 @@ def submit_exam_answer(
     }
 
 
+BREAK_DURATION_SEC = 10 * 60  # 10-minute break between R&W and Math
+
+
 def advance_exam(db: Session, session_id: UUID, user_id: UUID) -> dict:
-    """Move to next module or end exam. Builds M2 blueprint when entering M2; sets timers."""
+    """Move to next module or end exam. Builds M2 blueprint when entering M2; sets timers. Returns BREAK for 10-min break between R&W and Math."""
     session = db.query(SessionModel).filter(
         SessionModel.id == session_id,
         SessionModel.user_id == user_id,
@@ -380,6 +383,24 @@ def advance_exam(db: Session, session_id: UUID, user_id: UUID) -> dict:
     ).first()
     if not session:
         raise ValueError("Session not found")
+
+    # If currently in break, end break and start Math Module 1
+    if session.break_ends_at is not None:
+        session.break_ends_at = None
+        session.current_section = SectionEnum.MATH
+        session.current_module = 1
+        session.current_module_started_at = datetime.utcnow()
+        session.current_module_time_limit_sec = EXAM_MODULE_SPEC.get(("MATH", 1), (22, 35 * 60))[1]
+        build_module_blueprint(db, session_id, user_id, SectionEnum.MATH, 1, use_hard_band=False)
+        db.commit()
+        db.refresh(session)
+        return {
+            "status": "ACTIVE",
+            "current_section": session.current_section.value,
+            "current_module": session.current_module,
+            "time_limit_sec": session.current_module_time_limit_sec,
+        }
+
     section = session.current_section
     module = session.current_module or 1
     if section == SectionEnum.RW and module == 1:
@@ -403,11 +424,15 @@ def advance_exam(db: Session, session_id: UUID, user_id: UUID) -> dict:
         session.current_module_time_limit_sec = EXAM_MODULE_SPEC.get(("RW", 2), (27, 32 * 60))[1]
         build_module_blueprint(db, session_id, user_id, SectionEnum.RW, 2, use_hard_band=use_hard)
     elif section == SectionEnum.RW and module == 2:
-        session.current_section = SectionEnum.MATH
-        session.current_module = 1
-        session.current_module_started_at = datetime.utcnow()
-        session.current_module_time_limit_sec = EXAM_MODULE_SPEC.get(("MATH", 1), (22, 35 * 60))[1]
-        build_module_blueprint(db, session_id, user_id, SectionEnum.MATH, 1, use_hard_band=False)
+        # 10-minute break between Reading & Writing and Math (official SAT format)
+        session.break_ends_at = datetime.utcnow() + timedelta(seconds=BREAK_DURATION_SEC)
+        db.commit()
+        db.refresh(session)
+        return {
+            "status": "BREAK",
+            "break_duration_sec": BREAK_DURATION_SEC,
+            "break_ends_at": session.break_ends_at.isoformat() if session.break_ends_at else None,
+        }
     elif section == SectionEnum.MATH and module == 1:
         # Route Math M2
         math1_question_ids = [e.question_id for e in db.query(ExamModuleQuestion).filter(
@@ -538,6 +563,105 @@ def get_exam_result(db: Session, session_id: UUID, user_id: UUID) -> dict | None
         "total_scaled": r.total_scaled,
         "domain_breakdown_json": r.domain_breakdown_json,
         "created_at": r.created_at.isoformat() if r.created_at else None,
+    }
+
+
+def get_exam_review(db: Session, session_id: UUID, user_id: UUID) -> dict | None:
+    """Return detailed analysis and all 98 questions with user answer and explanation for a completed exam. None if not found or not ended."""
+    session = db.query(SessionModel).filter(
+        SessionModel.id == session_id,
+        SessionModel.user_id == user_id,
+        SessionModel.mode == SessionModeEnum.EXAM,
+        SessionModel.status == SessionStatusEnum.ENDED,
+    ).first()
+    if not session:
+        return None
+    result = get_exam_result(db, session_id, user_id)
+    if not result:
+        return None
+
+    emqs = (
+        db.query(ExamModuleQuestion)
+        .filter(ExamModuleQuestion.session_id == session_id)
+        .all()
+    )
+    section_order = [SectionEnum.RW, SectionEnum.MATH]
+    emqs_sorted = sorted(
+        emqs,
+        key=lambda e: (section_order.index(e.section), e.module_number, e.question_order),
+    )
+
+    attempts_by_question = {}
+    for a in db.query(Attempt).filter(Attempt.session_id == session_id).all():
+        attempts_by_question[a.question_id] = {"user_answer": a.user_answer, "is_correct": a.is_correct}
+
+    question_ids = [emq.question_id for emq in emqs_sorted]
+    questions_map = {}
+    for q in db.query(QuestionBank).filter(QuestionBank.id.in_(question_ids)).all():
+        questions_map[q.id] = q
+    skill_ids = {q.skill_id for q in questions_map.values()}
+    skills_map = {}
+    for s in db.query(Skill).filter(Skill.id.in_(skill_ids)).all():
+        skills_map[s.id] = s.name
+
+    by_module = [
+        {
+            "section": "RW",
+            "module": 1,
+            "correct": result["rw_module1_correct"],
+            "total": 27,
+        },
+        {
+            "section": "RW",
+            "module": 2,
+            "correct": result["rw_module2_correct"],
+            "total": 27,
+        },
+        {
+            "section": "MATH",
+            "module": 1,
+            "correct": result["math_module1_correct"],
+            "total": 22,
+        },
+        {
+            "section": "MATH",
+            "module": 2,
+            "correct": result["math_module2_correct"],
+            "total": 22,
+        },
+    ]
+
+    questions = []
+    for idx, emq in enumerate(emqs_sorted):
+        q = questions_map.get(emq.question_id)
+        if not q:
+            continue
+        att = attempts_by_question.get(emq.question_id, {})
+        choices = q.choices_json or {}
+        questions.append({
+            "index": idx + 1,
+            "section": emq.section.value,
+            "module_number": emq.module_number,
+            "question_order": emq.question_order,
+            "question_id": str(q.id),
+            "question_text": q.question_text,
+            "choices": choices,
+            "correct_answer": q.correct_answer,
+            "user_answer": att.get("user_answer"),
+            "is_correct": att.get("is_correct", False),
+            "explanation": q.explanation,
+            "skill_id": str(q.skill_id),
+            "skill_name": skills_map.get(q.skill_id, ""),
+        })
+
+    return {
+        "result": result,
+        "analysis": {
+            "by_module": by_module,
+            "total_correct": result["rw_total_correct"] + result["math_total_correct"],
+            "total_questions": 98,
+        },
+        "questions": questions,
     }
 
 

@@ -42,6 +42,7 @@ class Session(Base):
     current_module: Mapped[int | None] = mapped_column(Integer, nullable=True)
     current_module_started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     current_module_time_limit_sec: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    break_ends_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     practice_domain: Mapped[str | None] = mapped_column(String(100), nullable=True)
     current_practice_skill_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("skills.id", ondelete="SET NULL"), nullable=True

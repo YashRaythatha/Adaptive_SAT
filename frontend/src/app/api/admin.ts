@@ -1,4 +1,6 @@
-// Admin API client
+// Admin API client — calls backend with X-ADMIN-KEY
+
+import { getBase } from './client';
 
 const ADMIN_KEY_STORAGE = 'admin_key';
 
@@ -18,88 +20,142 @@ export function hasAdminKey(): boolean {
   return !!getAdminKey();
 }
 
-function getAdminHeaders(): HeadersInit {
+async function adminRequest<T>(
+  path: string,
+  options: RequestInit = {}
+): Promise<T> {
+  const base = await getBase();
   const key = getAdminKey();
-  return {
-    'Content-Type': 'application/json',
-    'X-ADMIN-KEY': key || '',
-  };
+  const res = await fetch(`${base}${path}`, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      'X-ADMIN-KEY': key || '',
+      ...options.headers,
+    },
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    let detail = text;
+    try {
+      const j = JSON.parse(text);
+      if (j.detail) detail = typeof j.detail === 'string' ? j.detail : JSON.stringify(j.detail);
+    } catch {
+      // use text as-is
+    }
+    throw new Error(detail || res.statusText);
+  }
+  if (res.status === 204 || res.headers.get('content-length') === '0') {
+    return undefined as T;
+  }
+  return res.json() as Promise<T>;
 }
 
-// Mock admin API
+// Backend response types
+interface BackendListResponse {
+  total: number;
+  skip: number;
+  limit: number;
+  items: Array<{
+    id: string;
+    section: string;
+    skill_id: string;
+    difficulty_llm: number;
+    question_text?: string;
+    quality_status: string;
+    created_at: string | null;
+  }>;
+}
+
+interface BackendQuestionDetail {
+  id: string;
+  section: string;
+  skill_id: string;
+  difficulty_llm: number;
+  question_text: string;
+  choices_json: Record<string, string> | null;
+  correct_answer: string;
+  explanation: string | null;
+  quality_status: string;
+  created_at: string | null;
+}
+
 export const adminApi = {
-  async listQuestions(status?: string, limit: number = 50) {
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    const key = getAdminKey();
-    if (!key || key !== 'demo-admin-key') {
-      throw new Error('Invalid admin key');
-    }
-
-    // Mock data
-    const mockQuestions = Array.from({ length: 15 }, (_, i) => ({
-      id: `question-${i + 1}-${Math.random().toString(36).substr(2, 9)}`,
-      section: i % 2 === 0 ? ('MATH' as const) : ('RW' as const),
-      skill_id: `skill-${i % 5}`,
-      difficulty_llm: (i % 5) + 1,
-      quality_status: (['DRAFT', 'APPROVED', 'REJECTED'][i % 3]) as 'DRAFT' | 'APPROVED' | 'REJECTED',
-      created_at: new Date(Date.now() - i * 86400000).toISOString(),
-    }));
-
-    if (status && status !== 'All') {
-      return mockQuestions.filter((q) => q.quality_status === status);
-    }
-
-    return mockQuestions;
+  async listQuestions(
+    status?: string,
+    page: number = 1,
+    pageSize: number = 20
+  ): Promise<{ items: Array<{
+    id: string;
+    section: 'MATH' | 'RW';
+    skill_id: string;
+    difficulty_llm: number;
+    quality_status: 'DRAFT' | 'APPROVED' | 'REJECTED';
+    created_at?: string;
+  }>; total: number; skip: number; limit: number }> {
+    const skip = (page - 1) * pageSize;
+    const params = new URLSearchParams();
+    if (status && status !== 'All') params.set('status', status);
+    params.set('skip', String(skip));
+    params.set('limit', String(pageSize));
+    const data = await adminRequest<BackendListResponse>(
+      `/api/admin/questions?${params.toString()}`
+    );
+    return {
+      items: data.items.map((x) => ({
+        id: x.id,
+        section: x.section as 'MATH' | 'RW',
+        skill_id: String(x.skill_id),
+        difficulty_llm: x.difficulty_llm,
+        quality_status: x.quality_status as 'DRAFT' | 'APPROVED' | 'REJECTED',
+        created_at: x.created_at ?? undefined,
+      })),
+      total: data.total,
+      skip: data.skip,
+      limit: data.limit,
+    };
   },
 
   async getQuestionDetail(id: string) {
-    await new Promise((resolve) => setTimeout(resolve, 300));
-    const key = getAdminKey();
-    if (!key || key !== 'demo-admin-key') {
-      throw new Error('Invalid admin key');
-    }
-
+    const q = await adminRequest<BackendQuestionDetail>(
+      `/api/admin/questions/${encodeURIComponent(id)}`
+    );
+    const choices = (q.choices_json || {}) as Record<'A' | 'B' | 'C' | 'D', string>;
     return {
-      id,
-      section: 'MATH' as const,
-      skill_id: 'algebra-1',
-      difficulty_llm: 3,
-      quality_status: 'DRAFT' as const,
-      created_at: new Date().toISOString(),
-      question_text: 'What is the value of x in the equation 2x + 5 = 15?',
-      choices: {
-        A: 'x = 3',
-        B: 'x = 5',
-        C: 'x = 10',
-        D: 'x = 7.5',
-      },
-      correct_answer: 'B' as const,
-      explanation: 'Subtract 5 from both sides: 2x = 10. Then divide by 2: x = 5.',
+      id: q.id,
+      section: q.section as 'MATH' | 'RW',
+      skill_id: String(q.skill_id),
+      difficulty_llm: q.difficulty_llm,
+      quality_status: q.quality_status as 'DRAFT' | 'APPROVED' | 'REJECTED',
+      created_at: q.created_at ?? undefined,
+      question_text: q.question_text,
+      choices,
+      correct_answer: q.correct_answer as 'A' | 'B' | 'C' | 'D',
+      explanation: q.explanation ?? undefined,
     };
   },
 
   async setQuestionStatus(id: string, status: 'APPROVED' | 'REJECTED') {
-    await new Promise((resolve) => setTimeout(resolve, 300));
-    const key = getAdminKey();
-    if (!key || key !== 'demo-admin-key') {
-      throw new Error('Invalid admin key');
-    }
-
+    const action = status === 'APPROVED' ? 'approve' : 'reject';
+    await adminRequest<{ id: string; quality_status: string }>(
+      `/api/admin/questions/${encodeURIComponent(id)}/${action}`,
+      { method: 'POST' }
+    );
     return { success: true, id, quality_status: status };
   },
 
   async getQuestionStats(id: string) {
-    await new Promise((resolve) => setTimeout(resolve, 300));
-    const key = getAdminKey();
-    if (!key || key !== 'demo-admin-key') {
-      throw new Error('Invalid admin key');
-    }
-
+    const s = await adminRequest<{
+      question_id: string;
+      times_used: number;
+      correct_rate: number | null;
+      avg_time_taken_sec: number | null;
+    }>(`/api/admin/questions/${encodeURIComponent(id)}/stats`);
     return {
-      question_id: id,
-      times_used: Math.floor(Math.random() * 100) + 10,
-      correct_rate: Math.random() * 0.5 + 0.3,
-      avg_time_taken_sec: Math.floor(Math.random() * 60) + 30,
+      question_id: s.question_id,
+      times_used: s.times_used,
+      correct_rate: s.correct_rate ?? 0,
+      avg_time_taken_sec: s.avg_time_taken_sec ?? 0,
     };
   },
 };

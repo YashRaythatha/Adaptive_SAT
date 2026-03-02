@@ -13,9 +13,10 @@ router = APIRouter(prefix="/users", tags=["users"])
 
 @router.post("", response_model=UserResponse)
 def register_user(data: UserCreate, db: Session = Depends(get_db)) -> UserResponse:
+    """Create a new user, or return the existing user if email is already registered (sign-in)."""
     existing = get_user_by_email(db, data.email)
     if existing:
-        raise HTTPException(status_code=400, detail="Email already registered")
+        return UserResponse.model_validate(existing)
     user = create_user(db, name=data.name, email=data.email)
     return UserResponse.model_validate(user)
 

@@ -134,6 +134,19 @@ def exam_result(
     return result
 
 
+@router.get("/review")
+def exam_review(
+    session_id: UUID = Query(...),
+    user_id: UUID = Query(...),
+    db: Session = Depends(get_db),
+):
+    """Get detailed analysis and full review of all 98 questions (correct answer, your answer, explanation) for a completed exam."""
+    review = exam_service.get_exam_review(db, session_id, user_id)
+    if not review:
+        raise HTTPException(status_code=404, detail="Exam review not found. Complete an exam first.")
+    return review
+
+
 @router.get("/weak_areas")
 def exam_weak_areas(
     user_id: UUID = Query(...),

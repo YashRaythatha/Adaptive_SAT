@@ -4,8 +4,10 @@ import { Practice } from './pages/Practice';
 import { PracticeSession } from './pages/PracticeSession';
 import { Exam } from './pages/Exam';
 import { ExamSession } from './pages/ExamSession';
+import { ExamReview } from './pages/ExamReview';
 import { Progress } from './pages/Progress';
 import { Admin } from './pages/Admin';
+import { AdminQuestionDetail } from './pages/AdminQuestionDetail';
 import { UserSetup } from './pages/UserSetup';
 import { NotFound } from './pages/NotFound';
 import { useUser } from './context/UserContext';
@@ -109,6 +111,14 @@ export const router = createBrowserRouter([
     ),
   },
   {
+    path: '/exam/review/:sessionId',
+    element: (
+      <RequireUser>
+        <ExamReview />
+      </RequireUser>
+    ),
+  },
+  {
     path: '/progress',
     element: (
       <RequireUser>
@@ -121,6 +131,14 @@ export const router = createBrowserRouter([
     element: (
       <RequireUser>
         <Admin />
+      </RequireUser>
+    ),
+  },
+  {
+    path: '/admin/questions/:questionId',
+    element: (
+      <RequireUser>
+        <AdminQuestionDetail />
       </RequireUser>
     ),
   },

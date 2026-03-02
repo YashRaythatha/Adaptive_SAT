@@ -135,11 +135,13 @@ interface ExamNextResponse {
 }
 
 interface ExamAdvanceResponse {
-  status: 'ACTIVE' | 'ENDED';
+  status: 'ACTIVE' | 'ENDED' | 'BREAK';
   current_section?: string;
   current_module?: number;
   time_limit_sec?: number;
   message?: string;
+  break_duration_sec?: number;
+  break_ends_at?: string;
 }
 
 interface ExamResultResponse {
@@ -150,6 +152,32 @@ interface ExamResultResponse {
   rw_total_correct?: number;
   math_total_correct?: number;
   domain_breakdown_json: Record<string, number>;
+}
+
+export interface ExamReviewQuestion {
+  index: number;
+  section: string;
+  module_number: number;
+  question_order: number;
+  question_id: string;
+  question_text: string;
+  choices: Record<string, string>;
+  correct_answer: string;
+  user_answer: string | null;
+  is_correct: boolean;
+  explanation: string | null;
+  skill_id: string;
+  skill_name: string;
+}
+
+export interface ExamReviewResponse {
+  result: ExamResultResponse;
+  analysis: {
+    by_module: Array<{ section: string; module: number; correct: number; total: number }>;
+    total_correct: number;
+    total_questions: number;
+  };
+  questions: ExamReviewQuestion[];
 }
 
 export const api = {
@@ -321,9 +349,9 @@ export const api = {
   },
 
   async endExam(sessionId: string) {
-    // Advance until ENDED, then fetch result
+    // Advance until ENDED (skip BREAK by advancing again to reach ACTIVE then ENDED)
     let advance = await this.advanceExam(sessionId);
-    while (advance.status === 'ACTIVE') {
+    while (advance.status === 'ACTIVE' || advance.status === 'BREAK') {
       advance = await this.advanceExam(sessionId);
     }
     return this.getExamResult(sessionId);
@@ -362,5 +390,14 @@ export const api = {
       `/api/exam/weak_areas?user_id=${encodeURIComponent(userId)}&top_n=${topN}`
     );
     return list;
+  },
+
+  /** Get detailed analysis and full review of all 98 questions for a completed exam. */
+  async getExamReview(sessionId: string): Promise<ExamReviewResponse> {
+    const userId = getUserId();
+    if (!userId) throw new ApiError(401, 'Not logged in');
+    return get<ExamReviewResponse>(
+      `/api/exam/review?session_id=${encodeURIComponent(sessionId)}&user_id=${encodeURIComponent(userId)}`
+    );
   },
 };

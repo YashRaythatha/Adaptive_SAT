@@ -1,68 +1,35 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { X, RefreshCw, Eye, CheckCircle, XCircle, BarChart } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { motion } from 'motion/react';
+import { useNavigate } from 'react-router';
+import { RefreshCw, Eye, CheckCircle, XCircle, BarChart, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Layout } from '../components/Layout';
 import { PageTitle, Spinner, ErrorMessage, AnimatedCard } from '../components/AnimatedComponents';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { adminApi, hasAdminKey, clearAdminKey } from '../api/admin';
-import type { AdminQuestion, AdminQuestionDetail, QuestionStats, QualityStatus } from '../types';
+import type { AdminQuestion, QuestionStats } from '../types';
 
 export function Admin() {
+  const navigate = useNavigate();
   const [isAuthenticated, setIsAuthenticated] = useState(hasAdminKey());
   const [adminKey, setAdminKey] = useState('');
   const [keyError, setKeyError] = useState('');
   const [questions, setQuestions] = useState<AdminQuestion[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const pageSize = 20;
   const [selectedStatus, setSelectedStatus] = useState<string>('All');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [viewDialogOpen, setViewDialogOpen] = useState(false);
-  const [viewDetail, setViewDetail] = useState<AdminQuestionDetail | null>(null);
-  const [viewLoading, setViewLoading] = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
   const [statsMap, setStatsMap] = useState<Record<string, QuestionStats>>({});
-  const viewDialogRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (isAuthenticated) {
-      loadQuestions();
+      loadQuestions(page);
     }
-  }, [isAuthenticated, selectedStatus]);
-
-  const FOCUSABLE_SELECTOR =
-    'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
-
-  useEffect(() => {
-    if (!viewDialogOpen) return;
-    const el = viewDialogRef.current;
-    if (!el) return;
-    const focusables = el.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR);
-    const first = focusables[0];
-    const last = focusables[focusables.length - 1];
-    first?.focus();
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        setViewDialogOpen(false);
-        return;
-      }
-      if (e.key !== 'Tab') return;
-      if (e.shiftKey) {
-        if (document.activeElement === first) {
-          e.preventDefault();
-          last?.focus();
-        }
-      } else {
-        if (document.activeElement === last) {
-          e.preventDefault();
-          first?.focus();
-        }
-      }
-    };
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [viewDialogOpen]);
+  }, [isAuthenticated, selectedStatus, page]);
 
   const handleKeySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -77,7 +44,7 @@ export function Admin() {
       // Store key and test it
       const { setAdminKey: storeKey } = await import('../api/admin');
       storeKey(adminKey);
-      await adminApi.listQuestions('All', 1); // Test request
+      await adminApi.listQuestions(undefined, 1, 10); // Test request
       setIsAuthenticated(true);
     } catch (err) {
       clearAdminKey();
@@ -91,15 +58,17 @@ export function Admin() {
     setAdminKey('');
   };
 
-  const loadQuestions = async () => {
+  const loadQuestions = async (pageNum: number) => {
     setLoading(true);
     setError('');
     try {
       const data = await adminApi.listQuestions(
         selectedStatus === 'All' ? undefined : selectedStatus,
-        50
+        pageNum,
+        pageSize
       );
-      setQuestions(data);
+      setQuestions(data.items);
+      setTotal(data.total);
     } catch (err) {
       setError('Failed to load questions. Please try again.');
     } finally {
@@ -107,19 +76,8 @@ export function Admin() {
     }
   };
 
-  const handleView = async (id: string) => {
-    setViewDialogOpen(true);
-    setViewLoading(true);
-    setViewDetail(null);
-    try {
-      const detail = await adminApi.getQuestionDetail(id);
-      setViewDetail(detail);
-    } catch (err) {
-      setError('Failed to load question details.');
-      setViewDialogOpen(false);
-    } finally {
-      setViewLoading(false);
-    }
+  const handleView = (id: string) => {
+    navigate(`/admin/questions/${id}`, { state: { questions } });
   };
 
   const handleSetStatus = async (id: string, status: 'APPROVED' | 'REJECTED') => {
@@ -130,12 +88,6 @@ export function Admin() {
       setQuestions((prev) =>
         prev.map((q) => (q.id === id ? { ...q, quality_status: status } : q))
       );
-      if (viewDetail?.id === id) {
-        setViewDetail((prev) => prev ? { ...prev, quality_status: status } : null);
-      }
-      if (viewDialogOpen) {
-        setViewDialogOpen(false);
-      }
     } catch (err) {
       setError('Failed to update question status.');
     } finally {
@@ -181,7 +133,7 @@ export function Admin() {
                 )}
                 {import.meta.env.DEV && (
                   <p className="text-xs text-muted-foreground mt-2">
-                    Demo key: <code className="bg-muted px-1 py-0.5 rounded">demo-admin-key</code>
+                    Use the <code className="bg-muted px-1 py-0.5 rounded">ADMIN_KEY</code> value from <code className="bg-muted px-1 py-0.5 rounded">backend/.env</code>
                   </p>
                 )}
               </div>
@@ -217,7 +169,10 @@ export function Admin() {
                 key={status}
                 variant={selectedStatus === status ? 'default' : 'outline'}
                 size="sm"
-                onClick={() => setSelectedStatus(status)}
+                onClick={() => {
+                  setSelectedStatus(status);
+                  setPage(1);
+                }}
               >
                 {status}
               </Button>
@@ -227,13 +182,47 @@ export function Admin() {
           <Button
             variant="outline"
             size="sm"
-            onClick={loadQuestions}
+            onClick={() => loadQuestions(page)}
             disabled={loading}
           >
             <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
             {loading ? 'Loading...' : 'Refresh'}
           </Button>
         </div>
+
+        {/* Pagination info and controls */}
+        {total > 0 && (
+          <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
+            <p className="text-sm text-muted-foreground">
+              Showing {(page - 1) * pageSize + 1}–{Math.min(page * pageSize, total)} of {total} questions
+            </p>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page <= 1 || loading}
+                aria-label="Previous page"
+              >
+                <ChevronLeft className="w-4 h-4" />
+                Previous
+              </Button>
+              <span className="text-sm text-muted-foreground px-2">
+                Page {page} of {Math.max(1, Math.ceil(total / pageSize))}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage((p) => Math.min(Math.ceil(total / pageSize), p + 1))}
+                disabled={page >= Math.ceil(total / pageSize) || loading}
+                aria-label="Next page"
+              >
+                Next
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+        )}
 
         {error && <ErrorMessage className="mb-4">{error}</ErrorMessage>}
 
@@ -245,7 +234,7 @@ export function Admin() {
         ) : questions.length === 0 ? (
           <AnimatedCard className="text-center py-12">
             <p className="text-muted-foreground mb-4">No questions in the list.</p>
-            <Button onClick={loadQuestions}>Load Questions</Button>
+            <Button onClick={() => loadQuestions(1)}>Load Questions</Button>
           </AnimatedCard>
         ) : (
           <AnimatedCard hover={false} className="p-0 overflow-hidden">
@@ -365,129 +354,6 @@ export function Admin() {
           </AnimatedCard>
         )}
 
-        {/* View question modal */}
-        <AnimatePresence>
-          {viewDialogOpen && (
-            <>
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                onClick={() => !viewLoading && setViewDialogOpen(false)}
-                className="fixed inset-0 bg-black/50 z-50"
-              />
-
-              <div className="fixed inset-0 flex items-center justify-center z-50 p-4 pointer-events-none">
-                <motion.div
-                  ref={viewDialogRef}
-                  initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                  transition={{ duration: 0.2 }}
-                  className="bg-card rounded-lg border border-border shadow-lg max-w-2xl w-full max-h-[90vh] flex flex-col pointer-events-auto"
-                  role="dialog"
-                  aria-modal="true"
-                  aria-labelledby="view-question-title"
-                >
-                  {/* Header */}
-                  <div className="flex items-start justify-between p-6 border-b border-border">
-                    <h2 id="view-question-title" className="text-lg font-medium">
-                      {viewDetail
-                        ? `Question · ${viewDetail.section} · Difficulty ${viewDetail.difficulty_llm}`
-                        : 'View Question'}
-                    </h2>
-                    <button
-                      onClick={() => setViewDialogOpen(false)}
-                      className="text-muted-foreground hover:text-foreground transition-colors"
-                      aria-label="Close dialog"
-                    >
-                      <X className="w-5 h-5" />
-                    </button>
-                  </div>
-
-                  {/* Body */}
-                  <div className="flex-1 overflow-y-auto p-6">
-                    {viewLoading ? (
-                      <div className="flex items-center justify-center py-12">
-                        <Spinner />
-                      </div>
-                    ) : viewDetail ? (
-                      <div className="space-y-4">
-                        <div className="p-4 bg-muted rounded-lg border border-border">
-                          <p className="whitespace-pre-wrap">{viewDetail.question_text}</p>
-                        </div>
-
-                        <div className="space-y-2">
-                          {(['A', 'B', 'C', 'D'] as const).map((letter) => {
-                            const isCorrect = viewDetail.correct_answer === letter;
-                            return (
-                              <div
-                                key={letter}
-                                className={`p-3 rounded-lg border ${
-                                  isCorrect
-                                    ? 'border-green-500 bg-green-50 dark:bg-green-950'
-                                    : 'border-border bg-muted/50'
-                                }`}
-                              >
-                                <div className="flex items-center gap-2">
-                                  <span className="font-medium">{letter}.</span>
-                                  <span>{viewDetail.choices[letter]}</span>
-                                  {isCorrect && (
-                                    <span className="ml-auto text-sm text-green-600 dark:text-green-400 font-medium">
-                                      (correct)
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-
-                        {viewDetail.explanation && (
-                          <div>
-                            <h4 className="font-medium mb-2">Explanation</h4>
-                            <div className="p-4 bg-blue-50 dark:bg-blue-950 rounded-lg text-sm text-muted-foreground">
-                              <p className="whitespace-pre-wrap">{viewDetail.explanation}</p>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <ErrorMessage>Failed to load question details.</ErrorMessage>
-                    )}
-                  </div>
-
-                  {/* Footer */}
-                  {viewDetail && (
-                    <div className="flex gap-3 p-6 border-t border-border">
-                      {viewDetail.quality_status === 'DRAFT' && (
-                        <>
-                          <Button
-                            onClick={() => handleSetStatus(viewDetail.id, 'APPROVED')}
-                            disabled={updatingStatus === viewDetail.id}
-                          >
-                            Approve
-                          </Button>
-                          <Button
-                            variant="outline"
-                            onClick={() => handleSetStatus(viewDetail.id, 'REJECTED')}
-                            disabled={updatingStatus === viewDetail.id}
-                            className="text-red-600 hover:text-red-700"
-                          >
-                            Reject
-                          </Button>
-                        </>
-                      )}
-                      <Button variant="ghost" onClick={() => setViewDialogOpen(false)} className="ml-auto">
-                        Close
-                      </Button>
-                    </div>
-                  )}
-                </motion.div>
-              </div>
-            </>
-          )}
-        </AnimatePresence>
       </div>
     </Layout>
   );
