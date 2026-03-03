@@ -200,6 +200,9 @@ def build_module_blueprint(
     key = (section.value, module_number)
     num_q, time_limit = EXAM_MODULE_SPEC.get(key, (27, 32 * 60))
     excluded = get_exam_excluded_question_ids(db, user_id)
+    # Also exclude questions already selected in this in-progress exam session
+    # so questions can't repeat across modules/sections within the same exam.
+    excluded |= _question_ids_from_exam_session(db, session_id)
 
     by_domain = _skills_by_domain(db, section)
     domain_order = _weighted_domain_order(num_q)
@@ -428,10 +431,16 @@ def advance_exam(db: Session, session_id: UUID, user_id: UUID) -> dict:
         session.break_ends_at = datetime.utcnow() + timedelta(seconds=BREAK_DURATION_SEC)
         db.commit()
         db.refresh(session)
+        # Serialize break_ends_at as UTC so the client parses it correctly (JS treats ISO without Z as local time).
+        if session.break_ends_at:
+            iso = session.break_ends_at.isoformat()
+            break_ends_at_iso = iso if ("Z" in iso or "+" in iso) else iso + "Z"
+        else:
+            break_ends_at_iso = None
         return {
             "status": "BREAK",
             "break_duration_sec": BREAK_DURATION_SEC,
-            "break_ends_at": session.break_ends_at.isoformat() if session.break_ends_at else None,
+            "break_ends_at": break_ends_at_iso,
         }
     elif section == SectionEnum.MATH and module == 1:
         # Route Math M2

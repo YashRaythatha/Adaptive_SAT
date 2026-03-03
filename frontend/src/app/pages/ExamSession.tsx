@@ -128,13 +128,14 @@ export function ExamSession() {
     questionOrder;
   const totalQuestions = questionsPerModuleNum * 4; // 2 sections × 2 modules
 
-  // Break countdown: update seconds remaining every second
+  // Break countdown: update seconds remaining every second (cap at 10 min so bad UTC never shows 308:04)
+  const BREAK_MAX_SEC = 10 * 60;
   useEffect(() => {
     if (!showBreakScreen || breakEndsAt == null) return;
     const endsAt = new Date(breakEndsAt).getTime();
     const tick = () => {
       const rem = Math.max(0, Math.ceil((endsAt - Date.now()) / 1000));
-      setBreakSecondsRemaining(rem);
+      setBreakSecondsRemaining(Math.min(BREAK_MAX_SEC, rem));
     };
     tick();
     const interval = setInterval(tick, 1000);

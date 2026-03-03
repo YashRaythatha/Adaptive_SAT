@@ -81,17 +81,9 @@ Use `--dry-run` to see how many would be generated per skill/difficulty without 
 
 ### Verifying Math question generation
 
-To confirm MATH questions are generating correctly (prompt, JSON parsing, validation):
+To confirm questions in the bank look correct (no placeholders):
 
-1. **Generate one MATH question** (uses OpenAI, writes to DB):
-
-   ```bash
-   python -m app.scripts.test_math_generation --skill "Algebra" --difficulty 3
-   ```
-
-   Success prints the new question; failure prints the error (e.g. JSON parse, validation, or judge).
-
-2. **Preview existing questions** (MATH only):
+1. **Preview existing questions** (e.g. MATH only):
 
    ```bash
    python -m app.scripts.preview_questions --section MATH --count 10
