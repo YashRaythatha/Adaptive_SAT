@@ -117,6 +117,16 @@ export function Layout({ children }: { children: React.ReactNode }) {
                     >
                       Progress
                     </NavLink>
+                    <NavLink
+                      to="/exam/history"
+                      className={({ isActive }) =>
+                        `text-sm transition-opacity rounded px-2 py-1 focus-visible:ring-2 focus-visible:ring-primary-foreground/50 ${
+                          isActive ? 'opacity-100 font-medium ring-2 ring-primary-foreground/30' : 'hover:opacity-80 opacity-90'
+                        }`
+                      }
+                    >
+                      Exam History
+                    </NavLink>
                     {hasAdminKey() && (
                       <NavLink
                         to="/admin"
@@ -196,6 +206,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
                       className="block w-full text-left py-2 text-sm hover:opacity-80 transition-opacity rounded focus-visible:ring-2 focus-visible:ring-primary-foreground/50"
                     >
                       Progress
+                    </button>
+                    <button
+                      onClick={() => handleNavigation('/exam/history')}
+                      className="block w-full text-left py-2 text-sm hover:opacity-80 transition-opacity rounded focus-visible:ring-2 focus-visible:ring-primary-foreground/50"
+                    >
+                      Exam History
                     </button>
                     {hasAdminKey() && (
                       <button

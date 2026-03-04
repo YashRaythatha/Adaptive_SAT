@@ -555,6 +555,34 @@ def _finalize_exam(db: Session, session_id: UUID, user_id: UUID) -> None:
     db.commit()
 
 
+def get_exam_history(db: Session, user_id: UUID, limit: int = 50) -> list[dict]:
+    """List past completed exams for the user, newest first. Each item has session_id, ended_at, scores for history page."""
+    results = (
+        db.query(ExamResult, SessionModel.ended_at)
+        .join(SessionModel, ExamResult.session_id == SessionModel.id)
+        .filter(
+            ExamResult.user_id == user_id,
+            SessionModel.mode == SessionModeEnum.EXAM,
+            SessionModel.status == SessionStatusEnum.ENDED,
+        )
+        .order_by(ExamResult.created_at.desc())
+        .limit(limit)
+        .all()
+    )
+    out = []
+    for r, ended_at in results:
+        out.append({
+            "session_id": str(r.session_id),
+            "ended_at": ended_at.isoformat() if ended_at else (r.created_at.isoformat() if r.created_at else None),
+            "total_scaled": r.total_scaled,
+            "rw_scaled": r.rw_scaled,
+            "math_scaled": r.math_scaled,
+            "rw_total_correct": r.rw_total_correct,
+            "math_total_correct": r.math_total_correct,
+        })
+    return out
+
+
 def get_exam_result(db: Session, session_id: UUID, user_id: UUID) -> dict | None:
     r = db.query(ExamResult).filter(ExamResult.session_id == session_id, ExamResult.user_id == user_id).first()
     if not r:

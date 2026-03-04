@@ -5,6 +5,7 @@ import { PracticeSession } from './pages/PracticeSession';
 import { Exam } from './pages/Exam';
 import { ExamSession } from './pages/ExamSession';
 import { ExamReview } from './pages/ExamReview';
+import { ExamHistory } from './pages/ExamHistory';
 import { Progress } from './pages/Progress';
 import { Admin } from './pages/Admin';
 import { AdminQuestionDetail } from './pages/AdminQuestionDetail';
@@ -115,6 +116,14 @@ export const router = createBrowserRouter([
     element: (
       <RequireUser>
         <ExamReview />
+      </RequireUser>
+    ),
+  },
+  {
+    path: '/exam/history',
+    element: (
+      <RequireUser>
+        <ExamHistory />
       </RequireUser>
     ),
   },

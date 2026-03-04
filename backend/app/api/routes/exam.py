@@ -147,6 +147,16 @@ def exam_review(
     return review
 
 
+@router.get("/history")
+def exam_history(
+    user_id: UUID = Query(...),
+    limit: int = Query(50, ge=1, le=100),
+    db: Session = Depends(get_db),
+):
+    """List past completed exams for the user (session_id, date, scores). Newest first."""
+    return exam_service.get_exam_history(db, user_id, limit=limit)
+
+
 @router.get("/weak_areas")
 def exam_weak_areas(
     user_id: UUID = Query(...),

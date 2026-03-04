@@ -72,9 +72,12 @@ export function Dashboard() {
           </AnimatedCard>
         </div>
 
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-muted-foreground space-x-4">
           <Link to="/progress" className="text-primary hover:underline">
             View your progress and all skills →
+          </Link>
+          <Link to="/exam/history" className="text-primary hover:underline">
+            Exam history →
           </Link>
         </p>
       </motion.div>

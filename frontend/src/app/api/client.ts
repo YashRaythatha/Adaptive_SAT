@@ -170,6 +170,16 @@ export interface ExamReviewQuestion {
   skill_name: string;
 }
 
+export interface ExamHistoryItem {
+  session_id: string;
+  ended_at: string | null;
+  total_scaled: number | null;
+  rw_scaled: number | null;
+  math_scaled: number | null;
+  rw_total_correct: number;
+  math_total_correct: number;
+}
+
 export interface ExamReviewResponse {
   result: ExamResultResponse;
   analysis: {
@@ -390,6 +400,25 @@ export const api = {
       `/api/exam/weak_areas?user_id=${encodeURIComponent(userId)}&top_n=${topN}`
     );
     return list;
+  },
+
+  /** Get seconds remaining for the current exam module. */
+  async getExamTimeRemaining(sessionId: string): Promise<{ seconds_remaining: number | null; expired: boolean }> {
+    const userId = getUserId();
+    if (!userId) throw new ApiError(401, 'Not logged in');
+    const r = await get<{ session_id: string; seconds_remaining: number | null; expired: boolean }>(
+      `/api/exam/time_remaining?session_id=${encodeURIComponent(sessionId)}&user_id=${encodeURIComponent(userId)}`
+    );
+    return { seconds_remaining: r.seconds_remaining, expired: r.expired };
+  },
+
+  /** List past completed exams (for history page). Newest first. */
+  async getExamHistory(limit = 50): Promise<ExamHistoryItem[]> {
+    const userId = getUserId();
+    if (!userId) throw new ApiError(401, 'Not logged in');
+    return get<ExamHistoryItem[]>(
+      `/api/exam/history?user_id=${encodeURIComponent(userId)}&limit=${limit}`
+    );
   },
 
   /** Get detailed analysis and full review of all 98 questions for a completed exam. */

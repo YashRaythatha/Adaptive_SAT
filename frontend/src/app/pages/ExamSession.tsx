@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import { motion } from 'motion/react';
-import { Trophy, TrendingUp, Target, Coffee } from 'lucide-react';
+import { Trophy, TrendingUp, Target, Coffee, Clock } from 'lucide-react';
 import { Layout } from '../components/Layout';
 import { PageTitle, AnimatedCard } from '../components/AnimatedComponents';
 import { QuestionCard } from '../components/QuestionCard';
@@ -12,7 +12,7 @@ import { ProgressBar } from '../components/ProgressBar';
 import { LoadingState } from '../components/LoadingState';
 import { ErrorState } from '../components/ErrorState';
 import { useSession } from '../context/SessionContext';
-import { api } from '../api/client';
+import { api, ApiError } from '../api/client';
 import type { Question, ExamResult } from '../types';
 
 export function ExamSession() {
@@ -36,6 +36,8 @@ export function ExamSession() {
   const [showBreakScreen, setShowBreakScreen] = useState(false);
   const [breakEndsAt, setBreakEndsAt] = useState<string | null>(null);
   const [breakSecondsRemaining, setBreakSecondsRemaining] = useState<number | null>(null);
+  const [moduleSecondsRemaining, setModuleSecondsRemaining] = useState<number | null>(null);
+  const autoAdvanceOnExpiryRef = useRef(false);
 
   useEffect(() => {
     setSessionType('exam');
@@ -44,6 +46,70 @@ export function ExamSession() {
 
     return () => clearSession();
   }, []);
+
+  // Poll module time remaining every second; when time is up, auto-advance to next module
+  useEffect(() => {
+    if (!sessionId || !question) return;
+    autoAdvanceOnExpiryRef.current = false;
+    const tick = async () => {
+      try {
+        const { seconds_remaining, expired } = await api.getExamTimeRemaining(sessionId);
+        setModuleSecondsRemaining(seconds_remaining ?? 0);
+        if (expired && !autoAdvanceOnExpiryRef.current) {
+          autoAdvanceOnExpiryRef.current = true;
+          setModuleSecondsRemaining(0);
+          setLoading(true);
+          try {
+            const advance = await api.advanceExam(sessionId);
+            if (advance.status === 'ENDED') {
+              const examResult = await api.getExamResult(sessionId);
+              setResult(examResult);
+              clearSession();
+              setLoading(false);
+              return;
+            }
+            if (advance.status === 'BREAK') {
+              setShowBreakScreen(true);
+              setBreakEndsAt(advance.break_ends_at ?? null);
+              setBreakSecondsRemaining(advance.break_duration_sec ?? 10 * 60);
+              setQuestion(null);
+              setLoading(false);
+              return;
+            }
+            if (advance.status === 'ACTIVE' && advance.current_section != null && advance.current_module != null) {
+              setCurrentSection(advance.current_section as 'RW' | 'MATH');
+              setCurrentModule(advance.current_module);
+              const q = await api.getNextExamQuestion(sessionId);
+              if (q) {
+                setQuestion({
+                  question_id: q.question_id,
+                  question_text: q.question_text,
+                  choices: q.choices,
+                  correct_answer: q.correct_answer,
+                  difficulty: q.difficulty,
+                  section: q.section,
+                  skill_id: q.skill_id,
+                });
+                setQuestionOrder(q.question_order);
+                setModuleTotal(q.module_total);
+                setSelectedAnswer(null);
+              }
+            }
+          } catch (e) {
+            console.error('Auto-advance on time expiry failed:', e);
+            autoAdvanceOnExpiryRef.current = false;
+          } finally {
+            setLoading(false);
+          }
+        }
+      } catch {
+        setModuleSecondsRemaining(null);
+      }
+    };
+    tick();
+    const interval = setInterval(tick, 1000);
+    return () => clearInterval(interval);
+  }, [sessionId, question?.question_id]);
 
   const loadQuestion = async () => {
     if (!sessionId) return;
@@ -103,6 +169,16 @@ export function ExamSession() {
       await api.submitExamAnswer(sessionId, question.question_id, selectedAnswer);
       setTimeout(loadQuestion, 100);
     } catch (error) {
+      if (error instanceof ApiError && error.status === 409) {
+        setModuleSecondsRemaining(0);
+        try {
+          await api.advanceExam(sessionId);
+          loadQuestion();
+        } catch (e) {
+          console.error('Failed to advance after time expired:', e);
+        }
+        return;
+      }
       console.error('Failed to submit answer:', error);
     }
   };
@@ -382,15 +458,28 @@ export function ExamSession() {
   return (
     <Layout>
       <div className="max-w-2xl mx-auto">
-        {/* Progress */}
+        {/* Progress and module timer */}
         <div className="mb-6">
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
             <span className="text-sm font-medium">
               {currentSection} - Module {currentModule}
             </span>
-            <span className="text-sm text-muted-foreground">
-              Question {questionOrder} of {moduleTotal}
-            </span>
+            <div className="flex items-center gap-3">
+              {moduleSecondsRemaining != null && (
+                <span
+                  className={`flex items-center gap-1.5 text-sm font-mono font-medium ${
+                    moduleSecondsRemaining <= 60 ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground'
+                  }`}
+                  aria-label={`Time remaining: ${Math.floor(moduleSecondsRemaining / 60)} minutes ${moduleSecondsRemaining % 60} seconds`}
+                >
+                  <Clock className="w-4 h-4" aria-hidden />
+                  {Math.floor(moduleSecondsRemaining / 60)}:{String(moduleSecondsRemaining % 60).padStart(2, '0')}
+                </span>
+              )}
+              <span className="text-sm text-muted-foreground">
+                Question {questionOrder} of {moduleTotal}
+              </span>
+            </div>
           </div>
           <div className="h-2 bg-muted rounded-full overflow-hidden mb-1">
             <motion.div
