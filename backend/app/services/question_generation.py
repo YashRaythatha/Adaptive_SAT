@@ -86,8 +86,12 @@ def _generate_raw(
     prompt = tpl.replace("{{skill_name}}", skill_name).replace("{{difficulty}}", str(difficulty))
     if avoid_question_texts:
         avoid_block = (
-            "\n\n## Important: Your question must be different\n"
-            "Do NOT create a question with the same or nearly the same wording as any of these existing questions. Write a new, distinct question:\n"
+            "\n\n## Important – novelty and diversity\n"
+            "Do NOT create a question that has the same or nearly the same wording as any of the existing questions below. "
+            "Also avoid creating the same type of problem or scenario (e.g. if you see a 'store sells pencils/erasers' or "
+            "'solve 2x + 3 = 11' style question, create something with a different context, different numbers, or a different "
+            "problem structure—not just a rephrase). Your question must be distinct in both wording and scenario/problem type.\n\n"
+            "Existing questions to avoid (wording and scenario):\n"
             + "\n".join(f"- {t}" for t in avoid_question_texts[:MAX_AVOID_SAMPLES])
         )
         prompt = prompt + avoid_block

@@ -29,6 +29,8 @@ def practice_start(data: PracticeStartRequest, db: Session = Depends(get_db)):
             db, user_id=data.user_id, section=data.section, domain=data.domain
         )
     except ValueError as e:
+        if str(e) == "USER_NOT_FOUND":
+            raise HTTPException(status_code=404, detail="USER_NOT_FOUND")
         raise HTTPException(status_code=400, detail=str(e))
     return PracticeStartResponse(
         session_id=session.id,
@@ -49,6 +51,8 @@ def targeted_practice_start(data: TargetedPracticeStartRequest, db: Session = De
             max_questions=data.max_questions,
         )
     except ValueError as e:
+        if str(e) == "USER_NOT_FOUND":
+            raise HTTPException(status_code=404, detail="USER_NOT_FOUND")
         raise HTTPException(status_code=400, detail=str(e))
     return PracticeStartResponse(
         session_id=session.id,

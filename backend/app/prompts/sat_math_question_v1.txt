@@ -9,7 +9,8 @@ You are an expert SAT Math item writer. Create one multiple-choice question for 
     (a) Advanced Math: Exponential or radical equations that require solving (e.g. solve 2^x = 5 using logarithms, or √(2x+1) + √(x+3) = 4). Do NOT use straightforward "growth/decay" plug-in (e.g. "population doubles every 5 years, find after 15 years")—that is difficulty 3–4.
     (b) Geometry and Trigonometry: Multi-step geometry, compound figures, or trig equations/identities. Do NOT use a single rule (30-60-90 triangle, triangle inequality, area = ½bh, or "given two sides and angle find the third")—those are difficulty 3–4.
     (c) Algebra: Same as (a)—exponentials, radicals, or rational equations with a real solving step; or quadratic with an extra constraint. Do NOT use a simple quadratic or system of two linear equations.
-  - For difficulty 1: Even easy items need full question text (50+ characters) and full choices (at least 5 characters each).
+  - For difficulty 1: Even easy items need full question text (50+ characters) and full choices (at least 5 characters each). Use a variety of simple scenarios (not only "store sells X and Y"); vary quantities and unknowns (e.g. different equations, different shapes).
+- Diversity: Create a distinct question—use a different scenario, context, or problem type from what you might have seen before (e.g. avoid another "store sells apples/pencils" or "solve 2x + 3 = 11" style item if similar ones already exist). Vary contexts (e.g. store, travel, geometry, science, real-world setup) and numbers; do not only rephrase the same problem.
 - Exactly 4 answer choices labeled A, B, C, D. One correct answer.
 - Question stem at least 50 characters; each choice at least 5 characters. Never use bare numbers: use "x = 5", "5 units", "a + b + c = 4", or "−6 units"—never "5", "4", or "−6" alone (validation rejects choices under 5 characters).
 - Question and options must be self-contained (no external references).
@@ -18,11 +19,11 @@ You are an expert SAT Math item writer. Create one multiple-choice question for 
 ## Output format (strict)
 You must respond with ONLY a single JSON object. No markdown code fences, no text before or after the JSON, no explanation. Copy the structure exactly:
 
-{"question_text": "Full question stem (problem statement). Minimum 50 characters.", "choices": {"A": "first choice", "B": "second choice", "C": "third choice", "D": "fourth choice"}, "correct_answer": "A", "explanation": "Step-by-step solution explaining why the correct answer is right. Minimum 60 characters."}
+{"question_text": "Full question stem (problem statement). Minimum 50 characters. Must describe a distinct scenario or problem type, not a close paraphrase of an existing question.", "choices": {"A": "first choice", "B": "second choice", "C": "third choice", "D": "fourth choice"}, "correct_answer": "A", "explanation": "Step-by-step solution explaining why the correct answer is right. Minimum 60 characters."}
 
 Rules:
 - correct_answer must be exactly "A", "B", "C", or "D" (uppercase). Double-check that the letter matches the intended numeric or algebraic answer in your explanation.
 - choices must have exactly keys "A", "B", "C", "D" (uppercase).
 - Each choice value must be at least 5 characters. Use "a + b + c = 4", "4 units", "−6 units", "x = 3"—never "4", "3", or "−6" alone.
-- question_text must be at least 50 characters; explanation at least 60 characters.
+- question_text must be at least 50 characters; explanation at least 60 characters. question_text must describe a distinct scenario or problem type (not a close paraphrase of an existing question).
 - No duplicate choice text.

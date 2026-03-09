@@ -20,10 +20,21 @@ class SectionEnum(str, enum.Enum):
 
 
 class DomainEnum(str, enum.Enum):
-    """Domain for skills; seed/backfill can set concrete values."""
+    """Domain for skills. SAT-aligned names (4 per section); legacy CORE/ADVANCED/OTHER kept for backfill."""
+    # Legacy (used only until migration/backfill)
     CORE = "CORE"
     ADVANCED = "ADVANCED"
     OTHER = "OTHER"
+    # SAT Math (Digital SAT)
+    ALGEBRA = "Algebra"
+    ADVANCED_MATH = "Advanced Math"
+    PROBLEM_SOLVING_AND_DATA_ANALYSIS = "Problem Solving and Data Analysis"
+    GEOMETRY_AND_TRIGONOMETRY = "Geometry and Trigonometry"
+    # SAT Reading and Writing
+    CRAFT_AND_STRUCTURE = "Craft and Structure"
+    INFORMATION_AND_IDEAS = "Information and Ideas"
+    STANDARD_ENGLISH_CONVENTIONS = "Standard English Conventions"
+    EXPRESSION_OF_IDEAS = "Expression of Ideas"
 
 
 class Skill(Base):

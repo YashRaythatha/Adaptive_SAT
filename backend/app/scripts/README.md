@@ -11,7 +11,7 @@
 
 | Script | Purpose |
 |--------|--------|
-| **backfill_skill_domains.py** | Sets skill `domain` (e.g. ADVANCED for "Advanced Math"). Run after seed_skills if you care about domain. |
+| **backfill_skill_domains.py** | Sets skill `domain` to SAT-aligned values (Algebra, Information and Ideas, etc.). Run after seed_skills or migration 005 if needed. |
 | **backfill_skill_topics.py** | Sets skill `topic` for reporting. Run after seed_skills if you use topic-based analytics. |
 
 ## Maintenance and reporting

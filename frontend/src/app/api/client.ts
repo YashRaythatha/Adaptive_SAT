@@ -144,6 +144,13 @@ interface ExamAdvanceResponse {
   break_ends_at?: string;
 }
 
+interface SkillsBreakdownItem {
+  skill_id: string;
+  skill_name: string;
+  correct: number;
+  total: number;
+}
+
 interface ExamResultResponse {
   session_id: string;
   rw_scaled: number;
@@ -152,6 +159,7 @@ interface ExamResultResponse {
   rw_total_correct?: number;
   math_total_correct?: number;
   domain_breakdown_json: Record<string, number>;
+  skills_breakdown?: SkillsBreakdownItem[];
 }
 
 export interface ExamReviewQuestion {
@@ -375,11 +383,11 @@ export const api = {
     );
     const totalCorrect = (r.rw_total_correct ?? 0) + (r.math_total_correct ?? 0);
     const totalQuestions = 54 + 44; // RW + Math
-    const skills_breakdown = Object.entries(r.domain_breakdown_json || {}).map(([skill_id, pct]) => ({
-      skill_id,
-      skill_name: skill_id,
-      correct: Math.round((pct / 100) * 10),
-      total: 10,
+    const skills_breakdown = (r.skills_breakdown ?? []).map((s) => ({
+      skill_id: s.skill_id,
+      skill_name: s.skill_name,
+      correct: s.correct,
+      total: s.total,
     }));
     return {
       session_id: r.session_id,

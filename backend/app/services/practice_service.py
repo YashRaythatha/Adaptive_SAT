@@ -49,7 +49,10 @@ def start_practice(
     section: SectionEnum,
     domain: str | None = None,
 ) -> SessionModel:
-    """Start practice session. No baseline gate. Picks lowest mastery skill in section (optional domain)."""
+    """Start practice session. No baseline gate. Picks lowest mastery skill in section (optional domain). Raises ValueError if user not found."""
+    from app.services.user_service import get_user_by_id
+    if get_user_by_id(db, user_id) is None:
+        raise ValueError("USER_NOT_FOUND")
     domain_enum = _parse_domain(domain)
     skill_id = _lowest_mastery_skill_id(db, user_id, section, domain_enum)
     if not skill_id:
@@ -76,7 +79,10 @@ def start_targeted_practice(
     min_questions: int = TARGETED_MIN,
     max_questions: int = TARGETED_MAX,
 ) -> SessionModel:
-    """Start targeted practice for a topic: preselect 10-20 questions, store in practice_blueprint_json. No repeats in session."""
+    """Start targeted practice for a topic: preselect 10-20 questions, store in practice_blueprint_json. No repeats in session. Raises ValueError if user not found."""
+    from app.services.user_service import get_user_by_id
+    if get_user_by_id(db, user_id) is None:
+        raise ValueError("USER_NOT_FOUND")
     skills = db.query(Skill).filter(Skill.topic == topic).all()
     if not skills:
         raise ValueError(f"No skills found for topic: {topic}")

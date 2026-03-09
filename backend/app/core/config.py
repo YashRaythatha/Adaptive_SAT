@@ -34,5 +34,18 @@ EXAM_M1_DIFFICULTY_DISTRIBUTION = [(2, 0.20), (3, 0.60), (4, 0.20)]
 EXAM_M2_EASY_DISTRIBUTION = [(1, 0.35), (2, 0.35), (3, 0.30)]
 # HARD band (M2 after high M1 accuracy): 70% diff 4-5, 30% diff 3
 EXAM_M2_HARD_DISTRIBUTION = [(4, 0.35), (5, 0.35), (3, 0.30)]
-# Domain weights for blueprint (CORE, ADVANCED, OTHER) - interleave by these
-EXAM_DOMAIN_WEIGHTS = {"CORE": 0.65, "ADVANCED": 0.25, "OTHER": 0.10}
+# SAT-aligned domain weights per section (Digital SAT content domains)
+# Reading and Writing: ~25% per domain
+EXAM_RW_DOMAIN_WEIGHTS = {
+    "Craft and Structure": 0.25,
+    "Information and Ideas": 0.25,
+    "Standard English Conventions": 0.25,
+    "Expression of Ideas": 0.25,
+}
+# Math: Algebra & Advanced Math ~35% each, others ~15%
+EXAM_MATH_DOMAIN_WEIGHTS = {
+    "Algebra": 0.35,
+    "Advanced Math": 0.35,
+    "Problem Solving and Data Analysis": 0.15,
+    "Geometry and Trigonometry": 0.15,
+}

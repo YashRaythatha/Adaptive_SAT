@@ -29,8 +29,11 @@ def exam_start(data: ExamStartRequest, db: Session = Depends(get_db)):
     """Start full Digital SAT exam. RW Module 1 blueprint is built and timer started."""
     try:
         session = exam_service.start_exam(db, data.user_id)
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    except ValueError as e:
+        msg = str(e)
+        if msg == "USER_NOT_FOUND":
+            raise HTTPException(status_code=404, detail="USER_NOT_FOUND")
+        raise HTTPException(status_code=400, detail=msg)
     return ExamStartResponse(
         session_id=session.id,
         current_section=session.current_section.value if session.current_section else "RW",

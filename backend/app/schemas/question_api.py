@@ -1,6 +1,6 @@
 """Question API request/response schemas."""
 from uuid import UUID
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.models.skill import SectionEnum
 
@@ -10,7 +10,7 @@ class QuestionRequest(BaseModel):
     user_id: UUID
     skill_id: UUID
     section: SectionEnum
-    difficulty: int  # 1-5
+    difficulty: int = Field(ge=1, le=5, description="Difficulty 1-5")
 
 
 class QuestionResponse(BaseModel):

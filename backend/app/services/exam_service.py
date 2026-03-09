@@ -11,7 +11,8 @@ from app.core.config import (
     EXAM_M1_DIFFICULTY_DISTRIBUTION,
     EXAM_M2_EASY_DISTRIBUTION,
     EXAM_M2_HARD_DISTRIBUTION,
-    EXAM_DOMAIN_WEIGHTS,
+    EXAM_RW_DOMAIN_WEIGHTS,
+    EXAM_MATH_DOMAIN_WEIGHTS,
 )
 from app.models.attempt import Attempt
 from app.models.exam_module_question import ExamModuleQuestion, ExamQuestionStatusEnum
@@ -93,9 +94,16 @@ def _skills_by_domain(db: Session, section: SectionEnum) -> dict[str, list[UUID]
     return by_domain
 
 
-def _weighted_domain_order(num_questions: int) -> list[str]:
-    """Interleave domains by weights; return list of domain names of length num_questions."""
-    weights = list(EXAM_DOMAIN_WEIGHTS.items())
+def _domain_weights_for_section(section: SectionEnum) -> dict[str, float]:
+    """Return SAT-aligned domain weights for the section."""
+    return EXAM_MATH_DOMAIN_WEIGHTS if section == SectionEnum.MATH else EXAM_RW_DOMAIN_WEIGHTS
+
+
+def _weighted_domain_order(section: SectionEnum, num_questions: int) -> list[str]:
+    """Interleave domains by section-specific weights; return list of domain names of length num_questions."""
+    weights = list(_domain_weights_for_section(section).items())
+    if not weights:
+        return ["Algebra"] * num_questions if section == SectionEnum.MATH else ["Information and Ideas"] * num_questions
     total_w = sum(w for _, w in weights)
     counts = [max(0, int(num_questions * (w / total_w))) for _, w in weights]
     diff = num_questions - sum(counts)
@@ -135,7 +143,10 @@ def _get_exam_question_with_fallbacks(
     All returned questions pass quality validation (no placeholders). Tries primary skill/difficulty,
     then other skills in domain, then other difficulties. Raises if none found.
     """
-    skill_ids = by_domain.get(domain_name) or by_domain.get("CORE", [])
+    skill_ids = by_domain.get(domain_name)
+    if not skill_ids:
+        # Fallback: use first domain that has skills for this section
+        skill_ids = next((ids for ids in by_domain.values() if ids), None)
     if not skill_ids:
         skill_ids = [s.id for s in db.query(Skill).filter(Skill.section == section).all()]
     if not skill_ids:
@@ -205,15 +216,17 @@ def build_module_blueprint(
     excluded |= _question_ids_from_exam_session(db, session_id)
 
     by_domain = _skills_by_domain(db, section)
-    domain_order = _weighted_domain_order(num_q)
+    domain_order = _weighted_domain_order(section, num_q)
     if module_number == 1:
         diff_seq = _difficulty_sequence(EXAM_M1_DIFFICULTY_DISTRIBUTION, num_q)
     else:
         dist = EXAM_M2_HARD_DISTRIBUTION if use_hard_band else EXAM_M2_EASY_DISTRIBUTION
         diff_seq = _difficulty_sequence(dist, num_q)
 
+    section_weights = _domain_weights_for_section(section)
+    fallback_domain = next(iter(section_weights), "Algebra" if section == SectionEnum.MATH else "Information and Ideas")
     for order in range(num_q):
-        domain_name = domain_order[order] if order < len(domain_order) else "CORE"
+        domain_name = domain_order[order] if order < len(domain_order) else fallback_domain
         difficulty = diff_seq[order] if order < len(diff_seq) else 3
         q = _get_exam_question_with_fallbacks(
             db,
@@ -271,7 +284,10 @@ def is_module_time_expired(db: Session, session_id: UUID, user_id: UUID) -> bool
 
 
 def start_exam(db: Session, user_id: UUID) -> SessionModel:
-    """Create exam session; first module (RW 1) blueprint built and started."""
+    """Create exam session; first module (RW 1) blueprint built and started. Raises ValueError if user not found."""
+    from app.services.user_service import get_user_by_id
+    if get_user_by_id(db, user_id) is None:
+        raise ValueError("USER_NOT_FOUND")
     session = SessionModel(
         user_id=user_id,
         mode=SessionModeEnum.EXAM,
@@ -583,10 +599,35 @@ def get_exam_history(db: Session, user_id: UUID, limit: int = 50) -> list[dict]:
     return out
 
 
+def _skills_breakdown_from_session(db: Session, session_id: UUID) -> list[dict]:
+    """Build list of { skill_id, skill_name, correct, total } for exam result display."""
+    from collections import defaultdict
+    attempts = db.query(Attempt).filter(Attempt.session_id == session_id).all()
+    by_skill: dict[str, list[bool]] = defaultdict(list)
+    for a in attempts:
+        q = db.query(QuestionBank).filter(QuestionBank.id == a.question_id).first()
+        if q:
+            by_skill[str(q.skill_id)].append(a.is_correct)
+    if not by_skill:
+        return []
+    skill_ids = list(by_skill.keys())
+    skills_map = {str(s.id): s.name for s in db.query(Skill).filter(Skill.id.in_([UUID(sid) for sid in skill_ids])).all()}
+    return [
+        {
+            "skill_id": skill_id,
+            "skill_name": skills_map.get(skill_id, "Unknown"),
+            "correct": sum(by_skill[skill_id]),
+            "total": len(by_skill[skill_id]),
+        }
+        for skill_id in skill_ids
+    ]
+
+
 def get_exam_result(db: Session, session_id: UUID, user_id: UUID) -> dict | None:
     r = db.query(ExamResult).filter(ExamResult.session_id == session_id, ExamResult.user_id == user_id).first()
     if not r:
         return None
+    skills_breakdown = _skills_breakdown_from_session(db, session_id)
     return {
         "session_id": str(r.session_id),
         "rw_module1_correct": r.rw_module1_correct,
@@ -599,6 +640,7 @@ def get_exam_result(db: Session, session_id: UUID, user_id: UUID) -> dict | None
         "math_scaled": r.math_scaled,
         "total_scaled": r.total_scaled,
         "domain_breakdown_json": r.domain_breakdown_json,
+        "skills_breakdown": skills_breakdown,
         "created_at": r.created_at.isoformat() if r.created_at else None,
     }
 
