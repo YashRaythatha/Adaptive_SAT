@@ -33,6 +33,8 @@ export function ExamHistory() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    setLoading(true);
+    setError(null);
     api
       .getExamHistory()
       .then(setList)
@@ -49,12 +51,17 @@ export function ExamHistory() {
   }
 
   if (error) {
+    const isUnauthorized = error.toLowerCase().includes('not logged in') || error.toLowerCase().includes('unauthorized');
     return (
       <Layout>
         <div className="max-w-md mx-auto py-12">
           <ErrorState
-            message={error}
-            onRetry={() => api.getExamHistory().then(setList).catch(() => {})}
+            message={isUnauthorized ? 'Please sign in to view exam history.' : error}
+            onRetry={() => {
+              setError(null);
+              setLoading(true);
+              api.getExamHistory().then(setList).catch((err) => setError(err?.message ?? 'Failed to load exam history')).finally(() => setLoading(false));
+            }}
           />
           <Button variant="outline" className="mt-4" onClick={() => navigate('/')}>
             Back to Dashboard

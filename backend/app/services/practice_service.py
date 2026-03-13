@@ -85,6 +85,8 @@ def start_targeted_practice(
         raise ValueError("USER_NOT_FOUND")
     skills = db.query(Skill).filter(Skill.topic == topic).all()
     if not skills:
+        skills = db.query(Skill).filter(Skill.name == topic).all()
+    if not skills:
         raise ValueError(f"No skills found for topic: {topic}")
     skill_ids = [s.id for s in skills]
     excluded = get_excluded_question_ids_for_user(db, user_id, 100)

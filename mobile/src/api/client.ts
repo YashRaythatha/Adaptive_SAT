@@ -1,48 +1,9 @@
 /**
- * API client for Adaptive SAT backend.
- * Uses VITE_API_URL if set, otherwise auto-detects backend on 8000 or 8001.
+ * API client for Adaptive SAT backend (mobile).
+ * Uses getApiBaseUrl() and AsyncStorage for user id.
  */
-const CANDIDATES = ['http://127.0.0.1:8000', 'http://127.0.0.1:8001'] as const;
-
-async function canReach(base: string, timeoutMs = 800): Promise<boolean> {
-  const ctrl = new AbortController();
-  const t = window.setTimeout(() => ctrl.abort(), timeoutMs);
-  try {
-    const res = await fetch(`${base}/api/health`, { signal: ctrl.signal });
-    return res.ok;
-  } catch {
-    return false;
-  } finally {
-    window.clearTimeout(t);
-  }
-}
-
-let basePromise: Promise<string> | null = null;
-
-export async function getBase(): Promise<string> {
-  const envBase = (import.meta.env.VITE_API_URL as string | undefined)?.trim();
-  if (envBase) return envBase;
-  if (!basePromise) {
-    basePromise = (async () => {
-      for (const base of CANDIDATES) {
-        if (await canReach(base)) return base;
-      }
-      return CANDIDATES[0];
-    })();
-  }
-  return basePromise;
-}
-
-function getUserId(): string {
-  const raw = sessionStorage.getItem('user');
-  if (!raw) return '';
-  try {
-    const parsed = JSON.parse(raw) as { id?: string };
-    return parsed?.id != null && typeof parsed.id === 'string' ? parsed.id : '';
-  } catch {
-    return '';
-  }
-}
+import { getApiBaseUrl } from '../config';
+import { getUserId } from '../storage';
 
 export class ApiError extends Error {
   constructor(
@@ -55,7 +16,7 @@ export class ApiError extends Error {
 }
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const base = await getBase();
+  const base = getApiBaseUrl();
   const res = await fetch(`${base}${path}`, {
     ...options,
     headers: {
@@ -80,30 +41,22 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-async function post<T>(path: string, body?: unknown): Promise<T> {
+function post<T>(path: string, body?: unknown): Promise<T> {
   return request<T>(path, {
     method: 'POST',
     body: body != null ? JSON.stringify(body) : undefined,
   });
 }
 
-async function get<T>(path: string): Promise<T> {
+function get<T>(path: string): Promise<T> {
   return request<T>(path, { method: 'GET' });
 }
 
-// Backend response shapes
+// --- Response types (match backend) ---
 interface UserResponse {
   id: string;
   name: string;
   email: string;
-  has_taken_baseline_exam?: boolean;
-}
-
-interface ProgressSkillRow {
-  skill_id: string;
-  skill_name: string;
-  section: string;
-  mastery_score: number;
 }
 
 interface PracticeStartResponse {
@@ -123,7 +76,7 @@ interface ExamStartResponse {
   session_id: string;
   current_section: string;
   current_module: number;
-  time_limit_sec: number;
+  time_limit_sec?: number;
 }
 
 interface ExamNextResponse {
@@ -146,13 +99,6 @@ interface ExamAdvanceResponse {
   break_ends_at?: string;
 }
 
-interface SkillsBreakdownItem {
-  skill_id: string;
-  skill_name: string;
-  correct: number;
-  total: number;
-}
-
 interface ExamResultResponse {
   session_id: string;
   rw_scaled: number;
@@ -160,8 +106,17 @@ interface ExamResultResponse {
   total_scaled: number;
   rw_total_correct?: number;
   math_total_correct?: number;
-  domain_breakdown_json: Record<string, number>;
-  skills_breakdown?: SkillsBreakdownItem[];
+  skills_breakdown?: { skill_id: string; skill_name: string; correct: number; total: number }[];
+}
+
+export interface ExamHistoryItem {
+  session_id: string;
+  ended_at: string | null;
+  total_scaled: number | null;
+  rw_scaled: number | null;
+  math_scaled: number | null;
+  rw_total_correct: number;
+  math_total_correct: number;
 }
 
 export interface ExamReviewQuestion {
@@ -180,23 +135,9 @@ export interface ExamReviewQuestion {
   skill_name: string;
 }
 
-export interface ExamHistoryItem {
-  session_id: string;
-  ended_at: string | null;
-  total_scaled: number | null;
-  rw_scaled: number | null;
-  math_scaled: number | null;
-  rw_total_correct: number;
-  math_total_correct: number;
-}
-
 export interface ExamReviewResponse {
   result: ExamResultResponse;
-  analysis: {
-    by_module: Array<{ section: string; module: number; correct: number; total: number }>;
-    total_correct: number;
-    total_questions: number;
-  };
+  analysis: { by_module: unknown[]; total_correct: number; total_questions: number };
   questions: ExamReviewQuestion[];
 }
 
@@ -206,21 +147,26 @@ export const api = {
     return { id: String(u.id), name: u.name, email: u.email };
   },
 
+  async getHealth(): Promise<{ status: string }> {
+    return get<{ status: string }>('/api/health');
+  },
+
   async getSkills() {
-    const userId = getUserId();
+    const userId = await getUserId();
     if (!userId) return [];
-    const rows = await get<ProgressSkillRow[]>(`/api/progress/skills?user_id=${encodeURIComponent(userId)}`);
+    const rows = await get<Array<{ skill_id: string; skill_name: string; section: string; mastery_score: number }>>(
+      `/api/progress/skills?user_id=${encodeURIComponent(userId)}`
+    );
     return rows.map((r) => ({
       skill_id: r.skill_id,
       section: r.section as 'MATH' | 'RW',
       skill_name: r.skill_name,
       mastery_level: r.mastery_score,
-      last_seen: undefined,
     }));
   },
 
   async startPractice(section: 'MATH' | 'RW') {
-    const userId = getUserId();
+    const userId = await getUserId();
     if (!userId) throw new ApiError(401, 'Not logged in');
     const data = await post<PracticeStartResponse>('/api/practice/start', {
       user_id: userId,
@@ -234,13 +180,8 @@ export const api = {
     };
   },
 
-  /** Start targeted practice for a specific skill/topic (e.g. weak area from exam). 10–20 questions. */
-  async startTargetedPractice(
-    topic: string,
-    minQuestions = 10,
-    maxQuestions = 20
-  ): Promise<{ session_id: string; section: 'MATH' | 'RW'; current_question_index: number }> {
-    const userId = getUserId();
+  async startTargetedPractice(topic: string, minQuestions = 10, maxQuestions = 20) {
+    const userId = await getUserId();
     if (!userId) throw new ApiError(401, 'Not logged in');
     const data = await post<PracticeStartResponse>('/api/practice/targeted/start', {
       user_id: userId,
@@ -255,9 +196,8 @@ export const api = {
     };
   },
 
-  /** Get the next practice question (backend returns one at a time). Returns null when no more questions. */
   async getNextPracticeQuestion(sessionId: string) {
-    const userId = getUserId();
+    const userId = await getUserId();
     if (!userId) throw new ApiError(401, 'Not logged in');
     try {
       const data = await post<PracticeNextResponse>('/api/practice/next', {
@@ -268,22 +208,14 @@ export const api = {
         question_id: String(data.question_id),
         question_text: data.question_text,
         choices: data.choices as Record<'A' | 'B' | 'C' | 'D', string>,
-        correct_answer: 'A' as const, // backend does not return correct_answer in next
         difficulty: data.difficulty,
-        section: 'MATH' as const, // section comes from session
+        section: 'MATH' as const,
         skill_id: '',
       };
     } catch (e) {
       if (e instanceof ApiError && e.status === 404) return null;
       throw e;
     }
-  },
-
-  /** Kept for compatibility; use getNextPracticeQuestion for real backend. Index 0 only. */
-  async getPracticeQuestion(sessionId: string, _index: number) {
-    const q = await this.getNextPracticeQuestion(sessionId);
-    if (!q) throw new ApiError(404, 'No more questions');
-    return q;
   },
 
   async submitPracticeAnswer(
@@ -309,15 +241,11 @@ export const api = {
 
   async endPractice(sessionId: string) {
     await post('/api/practice/end', { session_id: sessionId });
-    return {
-      score: 0,
-      total_questions: 0,
-      skills_worked: [] as string[],
-    };
+    return { score: 0, total_questions: 0, skills_worked: [] as string[] };
   },
 
   async startExam() {
-    const userId = getUserId();
+    const userId = await getUserId();
     if (!userId) throw new ApiError(401, 'Not logged in');
     const data = await post<ExamStartResponse>('/api/exam/start', { user_id: userId });
     return {
@@ -327,18 +255,7 @@ export const api = {
     };
   },
 
-  /** Get next exam question for current module. Returns null when no more in module. */
-  async getNextExamQuestion(sessionId: string): Promise<{
-    question_id: string;
-    question_text: string;
-    choices: Record<'A' | 'B' | 'C' | 'D', string>;
-    correct_answer: 'A' | 'B' | 'C' | 'D';
-    difficulty: number;
-    section: 'MATH' | 'RW';
-    skill_id: string;
-    question_order: number;
-    module_total: number;
-  } | null> {
+  async getNextExamQuestion(sessionId: string) {
     try {
       const data = await post<ExamNextResponse>('/api/exam/next', { session_id: sessionId });
       return {
@@ -351,26 +268,12 @@ export const api = {
         skill_id: '',
         question_order: data.question_order,
         module_total: data.module_total,
+        module_number: data.module_number,
       };
     } catch (e) {
       if (e instanceof ApiError && (e.status === 404 || e.status === 409)) return null;
       throw e;
     }
-  },
-
-  /** Kept for compatibility; delegates to getNextExamQuestion. */
-  async getExamQuestion(_sessionId: string, _section: string, _module: number, _index: number) {
-    const q = await this.getNextExamQuestion(_sessionId);
-    if (!q) throw new ApiError(404, 'No more questions');
-    return {
-      question_id: q.question_id,
-      question_text: q.question_text,
-      choices: q.choices,
-      correct_answer: q.correct_answer,
-      difficulty: q.difficulty,
-      section: q.section,
-      skill_id: q.skill_id,
-    };
   },
 
   async submitExamAnswer(sessionId: string, questionId: string, answer: 'A' | 'B' | 'C' | 'D') {
@@ -383,14 +286,12 @@ export const api = {
     return { success: true };
   },
 
-  /** Advance to next module. Returns { status: 'ACTIVE', ... } or { status: 'ENDED', message }. */
   async advanceExam(sessionId: string) {
-    const data = await post<ExamAdvanceResponse>('/api/exam/advance', { session_id: sessionId });
-    return data;
+    return post<ExamAdvanceResponse>('/api/exam/advance', { session_id: sessionId });
   },
 
+  /** End exam early: advance until ENDED then return result. */
   async endExam(sessionId: string) {
-    // Advance until ENDED (skip BREAK by advancing again to reach ACTIVE then ENDED)
     let advance = await this.advanceExam(sessionId);
     while (advance.status === 'ACTIVE' || advance.status === 'BREAK') {
       advance = await this.advanceExam(sessionId);
@@ -399,13 +300,13 @@ export const api = {
   },
 
   async getExamResult(sessionId: string) {
-    const userId = getUserId();
+    const userId = await getUserId();
     if (!userId) throw new ApiError(401, 'Not logged in');
     const r = await get<ExamResultResponse>(
       `/api/exam/result?session_id=${encodeURIComponent(sessionId)}&user_id=${encodeURIComponent(userId)}`
     );
     const totalCorrect = (r.rw_total_correct ?? 0) + (r.math_total_correct ?? 0);
-    const totalQuestions = 54 + 44; // RW + Math
+    const totalQuestions = 54 + 44;
     const skills_breakdown = (r.skills_breakdown ?? []).map((s) => ({
       skill_id: s.skill_id,
       skill_name: s.skill_name,
@@ -423,38 +324,33 @@ export const api = {
     };
   },
 
-  /** Get weakest areas from latest exam (for post-exam "practice these" recommendations). */
-  async getWeakAreas(topN = 5): Promise<Array<{ skill_id: string; skill_name: string; section: string; score_from_exam: number }>> {
-    const userId = getUserId();
+  async getWeakAreas(topN = 5) {
+    const userId = await getUserId();
     if (!userId) return [];
-    const list = await get<Array<{ skill_id: string; skill_name: string; section: string; score_from_exam: number }>>(
+    return get<Array<{ skill_id: string; skill_name: string; section: string; score_from_exam: number }>>(
       `/api/exam/weak_areas?user_id=${encodeURIComponent(userId)}&top_n=${topN}`
     );
-    return list;
   },
 
-  /** Get seconds remaining for the current exam module. */
-  async getExamTimeRemaining(sessionId: string): Promise<{ seconds_remaining: number | null; expired: boolean }> {
-    const userId = getUserId();
+  async getExamTimeRemaining(sessionId: string) {
+    const userId = await getUserId();
     if (!userId) throw new ApiError(401, 'Not logged in');
-    const r = await get<{ session_id: string; seconds_remaining: number | null; expired: boolean }>(
+    const r = await get<{ seconds_remaining: number | null; expired: boolean }>(
       `/api/exam/time_remaining?session_id=${encodeURIComponent(sessionId)}&user_id=${encodeURIComponent(userId)}`
     );
     return { seconds_remaining: r.seconds_remaining, expired: r.expired };
   },
 
-  /** List past completed exams (for history page). Newest first. */
   async getExamHistory(limit = 50): Promise<ExamHistoryItem[]> {
-    const userId = getUserId();
+    const userId = await getUserId();
     if (!userId) throw new ApiError(401, 'Not logged in');
     return get<ExamHistoryItem[]>(
       `/api/exam/history?user_id=${encodeURIComponent(userId)}&limit=${limit}`
     );
   },
 
-  /** Get detailed analysis and full review of all 98 questions for a completed exam. */
   async getExamReview(sessionId: string): Promise<ExamReviewResponse> {
-    const userId = getUserId();
+    const userId = await getUserId();
     if (!userId) throw new ApiError(401, 'Not logged in');
     return get<ExamReviewResponse>(
       `/api/exam/review?session_id=${encodeURIComponent(sessionId)}&user_id=${encodeURIComponent(userId)}`

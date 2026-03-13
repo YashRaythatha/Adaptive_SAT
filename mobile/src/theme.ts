@@ -1,0 +1,65 @@
+/**
+ * Design tokens aligned with the web app (frontend/src/styles/theme.css).
+ * Use these across all mobile screens so the app feels like the same product.
+ */
+export const theme = {
+  colors: {
+    background: '#ffffff',
+    foreground: '#030213',
+    primary: '#030213',
+    primaryForeground: '#ffffff',
+    secondary: '#f3f3f5',
+    secondaryForeground: '#030213',
+    muted: '#ececf0',
+    mutedForeground: '#717182',
+    accent: '#e9ebef',
+    border: 'rgba(0, 0, 0, 0.1)',
+    destructive: '#d4183d',
+    destructiveForeground: '#ffffff',
+    card: '#ffffff',
+    cardForeground: '#030213',
+    practiceCardBg: '#f0fdfa',
+    practiceCardBorder: '#5eead4',
+    practiceAccent: '#14b8a6',
+    practiceText: '#0f766e',
+    examCardBg: '#fffbeb',
+    examCardBorder: '#fcd34d',
+    examAccent: '#f59e0b',
+    examText: '#b45309',
+  },
+  spacing: {
+    pageX: 16,
+    pageY: 24,
+    section: 24,
+    card: 24,
+    item: 12,
+    xs: 4,
+    sm: 8,
+    md: 16,
+    lg: 24,
+  },
+  radius: {
+    sm: 6,
+    md: 8,
+    lg: 10,
+    xl: 12,
+  },
+  shadow: {
+    card: {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.06,
+      shadowRadius: 8,
+      elevation: 3,
+    },
+  },
+  typography: {
+    title: { fontSize: 24, fontWeight: '600' as const },
+    title2: { fontSize: 20, fontWeight: '600' as const },
+    body: { fontSize: 16, fontWeight: '400' as const },
+    bodyMedium: { fontSize: 16, fontWeight: '500' as const },
+    small: { fontSize: 14, fontWeight: '400' as const },
+    smallMedium: { fontSize: 14, fontWeight: '500' as const },
+    caption: { fontSize: 12, fontWeight: '400' as const },
+  },
+} as const;

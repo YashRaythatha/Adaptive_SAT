@@ -25,6 +25,9 @@ export function ExamReview() {
       setLoading(false);
       return;
     }
+    setLoading(true);
+    setError(null);
+    setReview(null);
     api
       .getExamReview(sessionId)
       .then(setReview)

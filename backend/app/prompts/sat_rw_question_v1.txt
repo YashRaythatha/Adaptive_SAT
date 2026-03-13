@@ -19,4 +19,5 @@ Rules:
 - correct_answer must be exactly "A", "B", "C", or "D" (uppercase).
 - choices must have exactly keys "A", "B", "C", "D". Each choice at least 3 characters.
 - question_text at least 40 characters; explanation at least 60 characters. question_text (and any passage) must be on a distinct topic or theme, not a close paraphrase of an existing question.
+- In the explanation, refer to "the correct choice" or "the answer above" rather than stating the letter (e.g. avoid "The correct answer is B"). This keeps the explanation valid when choice order is randomized.
 - No duplicate choice text.

@@ -15,6 +15,40 @@ import { useSession } from '../context/SessionContext';
 import { api, ApiError } from '../api/client';
 import type { Question, ExamResult } from '../types';
 
+/** Button to start a targeted practice session for one weak-area skill. */
+function WeakAreaPracticeButton({ skillName }: { skillName: string }) {
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handlePractice = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const session = await api.startTargetedPractice(skillName);
+      navigate(`/practice/session/${session.session_id}`);
+    } catch (e) {
+      const msg = e instanceof ApiError ? e.message : 'Failed to start practice';
+      setError(msg);
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="shrink-0 flex flex-col items-end gap-0.5">
+      <Button
+        size="sm"
+        variant="secondary"
+        onClick={handlePractice}
+        disabled={loading}
+      >
+        {loading ? 'Starting…' : 'Practice'}
+      </Button>
+      {error && <span className="text-xs text-destructive">{error}</span>}
+    </div>
+  );
+}
+
 export function ExamSession() {
   const { sessionId } = useParams<{ sessionId: string }>();
   const navigate = useNavigate();
@@ -339,20 +373,21 @@ export function ExamSession() {
               ) : (
                 <>
                   <p className="text-sm text-muted-foreground mb-4">
-                    These skills had the lowest performance on your exam. Practice them to improve your score next time.
+                    These skills had the lowest performance on your exam. You can practice them in practice mode—start a targeted session for any skill below, or go to Practice and choose a section.
                   </p>
                   <ul className="space-y-2 mb-6">
                     {weakAreas.map((area, index) => (
-                      <li key={area.skill_id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
-                        <span className="font-medium">{area.skill_name}</span>
-                        <span className="text-xs text-muted-foreground">
+                      <li key={area.skill_id} className="flex items-center justify-between gap-3 py-2 border-b border-border last:border-0">
+                        <span className="font-medium flex-1 min-w-0">{area.skill_name}</span>
+                        <span className="text-xs text-muted-foreground shrink-0">
                           {area.section} · {area.score_from_exam}%
                         </span>
+                        <WeakAreaPracticeButton skillName={area.skill_name} />
                       </li>
                     ))}
                   </ul>
-                  <Button onClick={() => navigate('/practice')} className="w-full" size="lg">
-                    Practice these areas
+                  <Button onClick={() => navigate('/practice')} className="w-full" size="lg" variant="outline">
+                    Go to Practice (pick section)
                   </Button>
                 </>
               )}

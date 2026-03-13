@@ -26,4 +26,5 @@ Rules:
 - choices must have exactly keys "A", "B", "C", "D" (uppercase).
 - Each choice value must be at least 5 characters. Use "a + b + c = 4", "4 units", "−6 units", "x = 3"—never "4", "3", or "−6" alone.
 - question_text must be at least 50 characters; explanation at least 60 characters. question_text must describe a distinct scenario or problem type (not a close paraphrase of an existing question).
+- In the explanation, refer to "the correct choice" or "the answer above" rather than stating the letter (e.g. avoid "The correct answer is B"). This keeps the explanation valid when choice order is randomized.
 - No duplicate choice text.

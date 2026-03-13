@@ -46,7 +46,12 @@ class Skill(Base):
     section: Mapped[SectionEnum] = mapped_column(Enum(SectionEnum), nullable=False, index=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str | None] = mapped_column(String(2000), nullable=True)
-    domain: Mapped[DomainEnum] = mapped_column(Enum(DomainEnum), nullable=False, default=DomainEnum.CORE, index=True)
+    domain: Mapped[DomainEnum] = mapped_column(
+        Enum(DomainEnum, values_callable=lambda x: [e.value for e in x]),
+        nullable=False,
+        default=DomainEnum.CORE,
+        index=True,
+    )
     topic: Mapped[str | None] = mapped_column(String(100), nullable=True, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
 

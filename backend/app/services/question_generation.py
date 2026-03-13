@@ -6,6 +6,53 @@ from uuid import UUID
 
 ORDER_KEYS = ["A", "B", "C", "D"]
 
+
+def _rewrite_explanation_for_shuffled_choices(explanation: str, old_correct: str, new_correct: str) -> str:
+    """Replace references to the old correct letter (before shuffle) with the new letter in the explanation.
+    Only touches common answer-reference patterns so we don't change unrelated uses of the letter."""
+    if not explanation or not old_correct or not new_correct or old_correct.upper() == new_correct.upper():
+        return explanation or ""
+    old_letter = old_correct.strip().upper()
+    new_letter = new_correct.strip().upper()
+    text = explanation
+    # Replace in common patterns (case-insensitive) so "correct answer is B" -> "correct answer is A"
+    patterns = [
+        (r"(correct\s+answer\s+is\s+)" + re.escape(old_letter) + r"(\s|\.|,|$)", r"\g<1>" + new_letter + r"\g<2>"),
+        (r"(the\s+answer\s+is\s+)" + re.escape(old_letter) + r"(\s|\.|,|$)", r"\g<1>" + new_letter + r"\g<2>"),
+        (r"(answer\s+is\s+)" + re.escape(old_letter) + r"(\s|\.|,|$)", r"\g<1>" + new_letter + r"\g<2>"),
+        (r"(Choice\s+)" + re.escape(old_letter) + r"(\s|\.|,|\)|$)", r"\g<1>" + new_letter + r"\g<2>"),
+        (r"(Option\s+)" + re.escape(old_letter) + r"(\s|\.|,|\)|$)", r"\g<1>" + new_letter + r"\g<2>"),
+        (r"(\s+)" + re.escape(old_letter) + r"(\s+is\s+correct)", r"\g<1>" + new_letter + r"\g<2>"),
+    ]
+    for pattern, repl in patterns:
+        text = re.sub(pattern, repl, text, flags=re.IGNORECASE)
+    return text
+
+
+def _normalize_explanation_to_stored_answer(explanation: str, stored_correct: str) -> str:
+    """Replace any stated answer letter in common phrases with stored_correct. Use for fixing existing DB rows."""
+    if not explanation or not stored_correct:
+        return explanation or ""
+    new_letter = stored_correct.strip().upper()
+    text = explanation
+    for letter in ORDER_KEYS:
+        if letter == new_letter:
+            continue
+        patterns = [
+            (
+                r"(correct\s+answer\s+is\s+|the\s+answer\s+is\s+|answer\s+is\s+|Choice\s+|Option\s+)"
+                + re.escape(letter)
+                + r"(\s|\.|,|\)|$)",
+                r"\g<1>" + new_letter + r"\g<2>",
+            ),
+            (r"(\s+)" + re.escape(letter) + r"(\s+is\s+correct)", r"\g<1>" + new_letter + r"\g<2>"),
+            (r"^(\s*)" + re.escape(letter) + r"(\s+is\s+correct)", r"\g<1>" + new_letter + r"\g<2>"),
+        ]
+        for pattern, repl in patterns:
+            text = re.sub(pattern, repl, text, flags=re.IGNORECASE)
+    return text
+
+
 from openai import OpenAI
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -251,6 +298,11 @@ def generate_question(
     if validation_errors:
         raise ValueError("Question failed validation: " + "; ".join(validation_errors))
 
+    # Rewrite explanation so it references the new correct letter after shuffle (not the pre-shuffle letter)
+    explanation_for_db = _rewrite_explanation_for_shuffled_choices(
+        parsed.explanation or "", parsed.correct_answer, shuffled_correct
+    )
+
     q = QuestionBank(
         section=section,
         skill_id=skill_id,
@@ -258,7 +310,7 @@ def generate_question(
         question_text=parsed.question_text,
         choices_json=shuffled_choices,
         correct_answer=shuffled_correct,
-        explanation=parsed.explanation,
+        explanation=explanation_for_db,
         quality_status=QualityStatusEnum.DRAFT,
         source_model=GENERATION_MODEL,
         prompt_version=PROMPT_VERSION,

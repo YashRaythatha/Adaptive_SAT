@@ -12,7 +12,7 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s %(message
 
 app = FastAPI(title="Adaptive SAT API", version="0.1.0")
 
-# CORS: allow frontend on localhost (Vite default 5173/5174, or port 3000)
+# CORS: allow frontend on localhost (Vite 5173/5174/3000, Expo web 8081/19006)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -20,10 +20,14 @@ app.add_middleware(
         "http://localhost:3001",
         "http://localhost:5173",
         "http://localhost:5174",
+        "http://localhost:8081",
+        "http://localhost:19006",
         "http://127.0.0.1:3000",
         "http://127.0.0.1:3001",
         "http://127.0.0.1:5173",
         "http://127.0.0.1:5174",
+        "http://127.0.0.1:8081",
+        "http://127.0.0.1:19006",
     ],
     allow_credentials=True,
     allow_methods=["*"],

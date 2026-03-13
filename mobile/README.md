@@ -1,12 +1,149 @@
 # Adaptive SAT — Mobile App (Android + iOS)
 
-This folder will contain the **mobile app** code. The **web app** (frontend + backend) remains unchanged; the mobile app will use the **same backend API** (same URLs, same endpoints).
+This folder contains the **mobile app** (Expo / React Native, TypeScript). The **web app** (frontend + backend) is unchanged; the mobile app uses the **same backend API**.
 
 ---
 
-## Goal
+## Quick start (Phase 1 + 2 done)
 
-- **One codebase** for **Android** and **iOS**.
+1. **Backend** must be running (e.g. `cd backend && uvicorn app.main:app --host 127.0.0.1 --port 8000`).
+2. **Copy env** (optional): `cp .env.example .env` and set `EXPO_PUBLIC_API_URL`:
+   - iOS Simulator: `http://localhost:8000`
+   - Android Emulator: `http://10.0.2.2:8000`
+   - Physical device: `http://YOUR_PC_IP:8000`
+3. **Install and run**:
+   ```bash
+   npm install
+   npx expo start
+   ```
+   Then press `a` for Android or `i` for iOS (or scan QR with Expo Go on a device).
+
+The app shows "Backend connected" when it reaches the API; otherwise it shows an error.
+
+**Phase-wise plan:** See **`PLAN.md`** in this folder for the full implementation plan (Phase 1–8).
+
+---
+
+## How to check the mobile app works
+
+1. **Start the backend** (from repo root or `backend/`):
+   ```bash
+   cd backend
+   uvicorn app.main:app --host 127.0.0.1 --port 8000
+   ```
+   Leave this running. Confirm in a browser: http://127.0.0.1:8000/api/health should return `{"status":"ok"}`.
+
+2. **Set the API URL** (if not already done):
+   - Ensure `mobile/.env` exists with `EXPO_PUBLIC_API_URL=http://localhost:8000`.
+   - **Android Emulator:** use `EXPO_PUBLIC_API_URL=http://10.0.2.2:8000` (emulator’s alias for your machine’s localhost).
+   - **Physical device:** use your computer’s LAN IP, e.g. `EXPO_PUBLIC_API_URL=http://192.168.1.100:8000`, and ensure the backend is reachable (same Wi‑Fi, firewall allows port 8000).
+
+3. **Start the mobile app** (from `mobile/`):
+   ```bash
+   cd mobile
+   npm install
+   npx expo start
+   ```
+
+4. **Open the app**:
+   - **Windows:** You cannot run the iOS simulator (Xcode is Mac-only). Use one of:
+     - **Android:** Press **`a`** in the terminal (requires [Android Studio](https://developer.android.com/studio) with an emulator). Or install **Expo Go** on an Android phone, ensure it’s on the same Wi‑Fi as your PC, and **scan the QR code**.
+     - **Web:** Press **`w`** to open the app in your browser (quick way to test; set `EXPO_PUBLIC_API_URL=http://localhost:8000`).
+     - **Physical iPhone:** Install **Expo Go** from the App Store, scan the QR code (same Wi‑Fi as PC; in `.env` use your PC’s IP for `EXPO_PUBLIC_API_URL`).
+   - **Mac:** Press **`i`** for iOS Simulator (Xcode required) or **`a`** for Android; or scan QR with Expo Go.
+
+5. **What you should see**:
+   - **Working:** Screen shows “Adaptive SAT Mobile”, “Phase 1: API client”, the API URL, and **“Backend connected”** in green.
+   - **Not working:** Red error text, e.g. “Failed to fetch” or “Network request failed”. Fix: check backend is running, correct `EXPO_PUBLIC_API_URL` for your platform, then restart Expo (`npx expo start` again).
+
+After changing `.env`, restart Expo (stop with Ctrl+C, then run `npx expo start` again) so the new URL is picked up.
+
+---
+
+## "Project is incompatible with this version of Expo Go"
+
+This project uses **Expo SDK 55**. The **Expo Go** app on the App Store / Play Store is often still built for **SDK 54**, so you may see:
+
+> Project is incompatible with this version of Expo Go. The project you requested requires a newer version of Expo Go.
+
+**Options (no need to downgrade the project):**
+
+1. **Use the app in the browser (easiest)**  
+   In the terminal where Expo is running, press **`w`**. The app opens in your browser and works the same (same API, Practice, Exam, etc.). Use `EXPO_PUBLIC_API_URL=http://localhost:8000` in `mobile/.env`.
+
+2. **iPhone: use Expo Go for SDK 55 via TestFlight**  
+   Install the beta that supports SDK 55: join the TestFlight build at **[testflight.apple.com/join/GZJxxfUU](https://testflight.apple.com/join/GZJxxfUU)** and install **Expo Go** from TestFlight. Then scan the QR code from `npx expo start` as usual.
+
+3. **Android**  
+   You can try installing the latest Expo Go from the Play Store. If it still says incompatible, use **`w`** for web or run on an emulator with **`a`** (Android Studio) if your Expo/React Native versions match the emulator’s Expo Go.
+
+4. **Development build (optional)**  
+   For a standalone app that doesn’t depend on Expo Go, use [EAS Build](https://docs.expo.dev/build/introduction/) or a local development build.
+
+---
+
+## Running on another computer (e.g. a friend’s PC)
+
+Use these steps to run the **whole project** (backend + mobile app) on a different machine.
+
+### Prerequisites on that computer
+
+- **Node.js 18+** (for mobile and optionally frontend)
+- **Python 3.11+** (for backend)
+- **PostgreSQL** (backend database)
+- **Git** (to clone the repo)
+
+### 1. Get the code
+
+- **Option A:** Clone the repo: `git clone <repo-url>` then `cd Adaptive_SAT`
+- **Option B:** Copy the whole `Adaptive_SAT` folder (e.g. via USB or zip)
+
+### 2. Backend (required for the mobile app)
+
+1. Create a PostgreSQL database (e.g. `adaptive_sat`). See `backend/sql/SETUP_DATABASE.md` if needed.
+2. Copy `backend/.env.example` to `backend/.env` and set:
+   - `DATABASE_URL` (e.g. `postgresql://user:password@localhost:5432/adaptive_sat`)
+   - `OPENAI_API_KEY` (for question generation; optional for basic run)
+3. From the repo root:
+   ```bash
+   cd backend
+   python -m venv .venv
+   .venv\Scripts\activate    # Windows
+   # source .venv/bin/activate   # Mac/Linux
+   pip install -r requirements.txt
+   alembic upgrade head
+   python -m app.scripts.seed   # optional: seed skills and sample data
+   uvicorn app.main:app --host 127.0.0.1 --port 8000
+   ```
+   Leave this terminal open. Check: open http://127.0.0.1:8000/api/health — should show `{"status":"ok"}`.
+
+### 3. Mobile app
+
+1. In a **new** terminal:
+   ```bash
+   cd mobile
+   ```
+2. Create env file:
+   - **Windows:** `copy .env.example .env`
+   - **Mac/Linux:** `cp .env.example .env`
+3. Edit `mobile/.env` and set `EXPO_PUBLIC_API_URL`:
+   - **Running in browser (easiest):** `http://localhost:8000`
+   - **Android emulator on same PC:** `http://10.0.2.2:8000`
+   - **Phone (Expo Go) on same Wi‑Fi:** `http://<THIS_PC_IP>:8000` (e.g. `http://192.168.1.100:8000`). Ensure the backend is reachable (firewall allows port 8000).
+4. Install and start:
+   ```bash
+   npm install
+   npx expo start
+   ```
+5. Open the app:
+   - Press **`w`** to run in the browser (works on any OS).
+   - Press **`a`** for Android (needs Android Studio + emulator).
+   - Or scan the QR code with **Expo Go** on a phone (use the PC’s IP in `.env` as above).
+
+When the app loads, it should show **“Backend connected”** if the URL is correct and the backend is running.
+
+---
+
 - **No changes** to the existing backend or web frontend.
 - Mobile app talks to the same `backend` API (e.g. `https://your-api.com` or same host with a different port in dev).
 
@@ -24,25 +161,21 @@ This folder will contain the **mobile app** code. The **web app** (frontend + ba
 
 ---
 
-## Proposed folder structure (when you start coding)
+## Proposed folder structure
 
 ```
-Adaptive_SAT/
-├── backend/          # Unchanged — same API
-├── frontend/         # Unchanged — web app
-├── mobile/           # Mobile app (this folder)
-│   ├── README.md     # This file — implementation plan
-│   ├── app/          # (Expo/React Native: app code, screens, components)
-│   ├── src/          # Or Flutter: lib/, pubspec.yaml
-│   ├── package.json  # Or pubspec.yaml for Flutter
-│   ├── app.json      # Expo config
-│   ├── android/     # Android project (generated by Expo/RN or Flutter)
-│   ├── ios/          # iOS project (generated)
-│   └── ...
-└── README.md
+mobile/
+├── App.tsx              # Root component (Phase 1: health check)
+├── src/
+│   ├── config.ts       # API base URL (EXPO_PUBLIC_API_URL)
+│   ├── storage.ts      # AsyncStorage user (getUser, setUser, getUserId)
+│   └── api/
+│       └── client.ts    # Full API client (users, practice, exam, progress, history, review, weak_areas)
+├── PLAN.md             # Phase-wise implementation plan
+├── package.json
+├── app.json
+└── .env.example        # EXPO_PUBLIC_API_URL
 ```
-
-All mobile-specific files (source, config, and later the generated `android/` and `ios/` projects) live under **`mobile/`**. Repo root stays as-is (backend, frontend, one main README).
 
 ---
 
