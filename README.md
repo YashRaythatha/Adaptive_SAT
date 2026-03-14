@@ -284,6 +284,30 @@ See **backend/docs/RUNBOOK.md** for:
 
 ---
 
+## Pushing to GitHub
+
+Repo: [github.com/YashRaythatha/Adaptive_SAT](https://github.com/YashRaythatha/Adaptive_SAT)
+
+After making changes locally, commit and push:
+
+```bash
+git add -A
+git commit -m "Your message"
+git push -u origin main
+```
+
+**If `git push` asks for login**, use one of these:
+
+| Method | Steps |
+|--------|--------|
+| **GitHub CLI** | Install [GitHub CLI](https://cli.github.com/), run `gh auth login`, then `git push` works. |
+| **SSH** | [Add an SSH key to GitHub](https://docs.github.com/en/authentication/connecting-to-github-with-ssh), then: `git remote set-url origin git@github.com:YashRaythatha/Adaptive_SAT.git` and run `git push`. |
+| **Personal Access Token** | [Create a token](https://github.com/settings/tokens) (classic, **repo** scope). When Git asks for password, paste the token (not your GitHub password). |
+
+If the remote already has different commits, use `git pull origin main --rebase` then `git push`, or `git push --force origin main` only if you intend to overwrite the remote branch.
+
+---
+
 ## License
 
 This is a local-first project. Use and modify as needed.
