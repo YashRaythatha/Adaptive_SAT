@@ -296,11 +296,30 @@ git commit -m "Your message"
 git push -u origin main
 ```
 
-**If `git push` asks for login**, use one of these:
+### Browser-based login (recommended)
+
+Use **GitHub CLI** so Git opens your browser to sign in—no terminal password prompts.
+
+1. **Install GitHub CLI**
+   - **macOS:** Download from [cli.github.com](https://cli.github.com/) or, if you have Homebrew: `brew install gh`
+   - **Windows:** `winget install GitHub.cli` or download from the link above
+2. **Sign in (opens browser)**  
+   In a terminal, run:
+   ```bash
+   gh auth login
+   ```
+   - Choose **GitHub.com** → **HTTPS** → **Login with a web browser**. Copy the one-time code, press Enter; your browser will open. Paste the code and approve. Done.
+3. **Use it with Git**  
+   When asked “Authenticate Git with your GitHub credentials?”, choose **Yes**. After that, `git push` and `git pull` will use this login (no extra steps).
+4. **Push as usual**
+   ```bash
+   git push -u origin main
+   ```
+
+### Other sign-in options
 
 | Method | Steps |
 |--------|--------|
-| **GitHub CLI** | Install [GitHub CLI](https://cli.github.com/), run `gh auth login`, then `git push` works. |
 | **SSH** | [Add an SSH key to GitHub](https://docs.github.com/en/authentication/connecting-to-github-with-ssh), then: `git remote set-url origin git@github.com:YashRaythatha/Adaptive_SAT.git` and run `git push`. |
 | **Personal Access Token** | [Create a token](https://github.com/settings/tokens) (classic, **repo** scope). When Git asks for password, paste the token (not your GitHub password). |
 
