@@ -69,6 +69,7 @@ GENERATION_MODEL = "gpt-4o-mini"
 JUDGE_MODEL = "gpt-4o"
 PROMPT_VERSION = "v1"
 MAX_JSON_RETRIES = 4
+# Base judge retries; difficulty 5 may get more (see below).
 MAX_JUDGE_RETRIES = 2
 MAX_NOVELTY_RETRIES = 3  # retry generation if question_text already exists for this skill
 MAX_AVOID_SAMPLES = 8    # max existing question texts to show in prompt so LLM generates something different
@@ -124,6 +125,7 @@ def _generate_raw(
     skill_name: str,
     difficulty: int,
     avoid_question_texts: list[str] | None = None,
+    judge_feedback: str | None = None,
 ) -> str:
     wait_if_needed()
     if section == SectionEnum.MATH:
@@ -142,6 +144,8 @@ def _generate_raw(
             + "\n".join(f"- {t}" for t in avoid_question_texts[:MAX_AVOID_SAMPLES])
         )
         prompt = prompt + avoid_block
+    if judge_feedback:
+        prompt = prompt + judge_feedback
     r = client.chat.completions.create(
         model=GENERATION_MODEL,
         messages=[{"role": "user", "content": prompt}],
@@ -233,33 +237,37 @@ def generate_question(
                 "correct_answer": parsed.correct_answer,
                 "explanation": parsed.explanation,
             }
-            for _ in range(MAX_JUDGE_RETRIES + 1):
+            # Allow extra judge-driven retries for the hardest items.
+            judge_retries = MAX_JUDGE_RETRIES + (2 if difficulty == 5 else 0)
+            last_issues: str | None = None
+            for _ in range(judge_retries + 1):
                 ok, issues = _judge(client, question_dict, difficulty)
+                last_issues = issues
                 if ok:
                     break
-                raw = _generate_raw(client, section, skill_name, difficulty, avoid_question_texts=avoid_texts)
+                # If judge says it's too easy or has a specific flaw, feed that back into the next generation.
+                feedback = f"\n\nThe previous attempt was rejected for this reason: {issues}. Regenerate a question that fixes this issue while still following all original instructions."
+                raw = _generate_raw(client, section, skill_name, difficulty, avoid_question_texts=avoid_texts, judge_feedback=feedback)
                 data = _extract_json(raw)
-                if data:
-                    try:
-                        parsed = QuestionLLMOutput(
-                            question_text=data["question_text"],
-                            choices=data["choices"],
-                            correct_answer=data["correct_answer"],
-                            explanation=data.get("explanation", ""),
-                        )
-                        question_dict = {
-                            "question_text": parsed.question_text,
-                            "choices": parsed.choices,
-                            "correct_answer": parsed.correct_answer,
-                            "explanation": parsed.explanation,
-                        }
-                        ok, issues = _judge(client, question_dict, difficulty)
-                        if ok:
-                            break
-                    except Exception:
-                        pass
+                if not data:
+                    continue
+                try:
+                    parsed = QuestionLLMOutput(
+                        question_text=data["question_text"],
+                        choices=data["choices"],
+                        correct_answer=data["correct_answer"],
+                        explanation=data.get("explanation", ""),
+                    )
+                    question_dict = {
+                        "question_text": parsed.question_text,
+                        "choices": parsed.choices,
+                        "correct_answer": parsed.correct_answer,
+                        "explanation": parsed.explanation,
+                    }
+                except Exception:
+                    continue
             if not ok:
-                raise ValueError(f"Judge did not pass after retries: {issues}")
+                raise ValueError(f"Judge did not pass after retries: {last_issues}")
 
         # Check if this question_text already exists for this skill — if so, retry with it in the avoid list
         normalized_text = (parsed.question_text or "").strip()

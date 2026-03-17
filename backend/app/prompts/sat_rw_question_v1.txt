@@ -5,10 +5,20 @@ You are an expert SAT Reading and Writing item writer. Create one multiple-choic
 - Skill focus: {{skill_name}}
 - Difficulty: {{difficulty}} (1=easiest, 5=hardest). Match passage complexity and item demand to this level.
   - For difficulty 5: The question must be genuinely hard. Include a substantive passage or data (e.g. a short paragraph or a table/graph description). Require multi-step reasoning, subtle distinction between evidence options, or non-obvious inference. Wrong answers should be plausible. Do not write a simple "which evidence supports X?" with one obviously correct answer.
+    - REQUIRED difficulty-5 checklist (must satisfy at least 2 bullets):
+      - Requires combining two parts of the passage (or passage + data) to answer.
+      - Requires a non-obvious inference (not directly stated).
+      - Two wrong answers must be “close” (partially supported but ultimately incorrect).
+      - If quantitative evidence is involved: requires at least one step of comparison or calculation (not “pick the biggest number”).
   - For difficulty 4: Use a passage or data with real nuance; require careful reading or comparison.
 - Diversity: Create a distinct item—use a different topic, passage theme, or testing focus (e.g. different subject matter or skill angle). Vary passage content and question focus; do not only rephrase the same kind of evidence or grammar item.
 - Exactly 4 answer choices labeled A, B, C, D. One correct answer.
 - Question and options must be self-contained. If a short passage or sentence is needed, include it in the question_text.
+
+## Self-check (do this BEFORE you answer)
+- If difficulty is 5, confirm your item satisfies the REQUIRED checklist above. If not, regenerate internally and only output a compliant item.
+- Ensure all answer choices are plausible and not obviously eliminable by wording alone.
+- Ensure the explanation does not mention the answer letter; refer to “the correct choice” or “the answer above”.
 
 ## Output format (strict)
 You must respond with ONLY a single JSON object. No markdown code fences, no text before or after the JSON.

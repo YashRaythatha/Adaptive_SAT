@@ -9,12 +9,23 @@ You are an expert SAT Math item writer. Create one multiple-choice question for 
     (a) Advanced Math: Exponential or radical equations that require solving (e.g. solve 2^x = 5 using logarithms, or √(2x+1) + √(x+3) = 4). Do NOT use straightforward "growth/decay" plug-in (e.g. "population doubles every 5 years, find after 15 years")—that is difficulty 3–4.
     (b) Geometry and Trigonometry: Multi-step geometry, compound figures, or trig equations/identities. Do NOT use a single rule (30-60-90 triangle, triangle inequality, area = ½bh, or "given two sides and angle find the third")—those are difficulty 3–4.
     (c) Algebra: Same as (a)—exponentials, radicals, or rational equations with a real solving step; or quadratic with an extra constraint. Do NOT use a simple quadratic or system of two linear equations.
+  - For difficulty 5: REQUIRED complexity checklist (must satisfy at least 2 bullets):
+    - Requires at least 2 distinct algebraic steps after setup (not just plug-and-chug).
+    - Uses logarithms OR a radical equation OR a rational equation with domain restriction(s) OR a trig identity/equation.
+    - Includes a non-obvious constraint (e.g. “positive solutions only”, parameter constraint, extraneous root check, or geometric constraint).
+    - Cannot be solved by a single memorized rule (avoid single-step Pythagorean theorem, single area formula, or one direct proportion).
   - For difficulty 1: Even easy items need full question text (50+ characters) and full choices (at least 5 characters each). Use a variety of simple scenarios (not only "store sells X and Y"); vary quantities and unknowns (e.g. different equations, different shapes).
 - Diversity: Create a distinct question—use a different scenario, context, or problem type from what you might have seen before (e.g. avoid another "store sells apples/pencils" or "solve 2x + 3 = 11" style item if similar ones already exist). Vary contexts (e.g. store, travel, geometry, science, real-world setup) and numbers; do not only rephrase the same problem.
 - Exactly 4 answer choices labeled A, B, C, D. One correct answer.
 - Question stem at least 50 characters; each choice at least 5 characters. Never use bare numbers: use "x = 5", "5 units", "a + b + c = 4", or "−6 units"—never "5", "4", or "−6" alone (validation rejects choices under 5 characters).
+- Every choice must contain meaningful math text (examples: includes "x", "y", an operator like "+", "−", "*", "/", "^", "√", a unit word, or an equals sign). Do NOT output choices that are just a single number or single symbol.
 - Question and options must be self-contained (no external references).
 - Use clear, standard mathematical notation and wording appropriate for high school test-takers.
+
+## Self-check (do this BEFORE you answer)
+- If difficulty is 5, confirm your item satisfies the REQUIRED checklist above. If not, regenerate internally and only output a compliant item.
+- Verify choices A–D are all 5+ characters and are not bare numbers.
+- Verify the explanation has no calculation errors and supports the correct answer.
 
 ## Output format (strict)
 You must respond with ONLY a single JSON object. No markdown code fences, no text before or after the JSON, no explanation. Copy the structure exactly:
