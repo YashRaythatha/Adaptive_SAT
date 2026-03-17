@@ -1,5 +1,7 @@
 # Adaptive SAT
 
+**Source:** [github.com/YashRaythatha/Adaptive_SAT](https://github.com/YashRaythatha/Adaptive_SAT)
+
 A **local-first adaptive SAT practice system**. Users take a full Digital SAT–style practice exam (98 questions, timed modules, 10-minute break), then practice by skill with adaptive difficulty. The app uses **PostgreSQL** for persistence and **OpenAI** for question generation and quality judging. No Docker or cloud required.
 
 ---
@@ -45,8 +47,8 @@ Adaptive_SAT/
 │   ├── package.json
 │   └── .env.example
 ├── README.md                # This file
-├── run_backend.bat          # Start backend (port 8000 or 8001)
-└── run_frontend.bat         # Start frontend (Vite dev server)
+├── run_backend.bat / run_backend.sh   # Start backend (port 8000 or 8001)
+└── run_frontend.bat / run_frontend.sh # Start frontend (Vite dev server)
 ```
 
 ---
@@ -78,7 +80,7 @@ Adaptive_SAT/
    ```bash
    cd backend
    python -m venv .venv
-   .venv\Scripts\activate   # Windows
+   .venv\Scripts\activate   # Windows. macOS/Linux: source .venv/bin/activate
    pip install -r requirements.txt
    alembic upgrade head
    python -m app.scripts.seed_skills
@@ -92,7 +94,7 @@ cd backend
 uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
-Or from repo root: `run_backend.bat` (uses 8000, or 8001 if 8000 is in use).
+Or from repo root: **Windows** `run_backend.bat` · **macOS/Linux** `./run_backend.sh` (uses 8000, or 8001 if 8000 is in use).
 
 - API: **http://127.0.0.1:8000**
 - Docs: **http://127.0.0.1:8000/docs**
@@ -106,11 +108,18 @@ npm install
 npm run dev
 ```
 
-Or from repo root: `run_frontend.bat`.
+Or from repo root: **Windows** `run_frontend.bat` · **macOS/Linux** `./run_frontend.sh`.
 
 - App: **http://localhost:3000**
 
-### 5. First use
+### 5. Running on macOS (e.g. Mac Mini)
+
+- Use the **shell scripts**: `./run_backend.sh` and `./run_frontend.sh` (from the repo root).
+- Activate the backend venv with `source backend/.venv/bin/activate` when running commands manually.
+- Install **PostgreSQL** if needed: `brew install postgresql@16` (or 15), then start the service and create the database (see **Database setup**).
+- Ensure **Python 3.11+** and **Node.js 18+** are installed (`brew install python@3.12 node` if using Homebrew).
+
+### 6. First use
 
 1. Open http://localhost:3000 → redirects to **Setup** (create user: name, email).
 2. **Dashboard** → Start a **Full Practice Exam** or **Practice Session**.
@@ -272,6 +281,49 @@ See **backend/docs/RUNBOOK.md** for:
 - OpenAI / rate limits / judge failures
 - Admin 403 (X-ADMIN-KEY)
 - “No questions” or “No skills found” (seed skills, seed questions)
+
+---
+
+## Pushing to GitHub
+
+Repo: [github.com/YashRaythatha/Adaptive_SAT](https://github.com/YashRaythatha/Adaptive_SAT)
+
+After making changes locally, commit and push:
+
+```bash
+git add -A
+git commit -m "Your message"
+git push -u origin main
+```
+
+### Browser-based login (recommended)
+
+Use **GitHub CLI** so Git opens your browser to sign in—no terminal password prompts.
+
+1. **Install GitHub CLI**
+   - **macOS:** Download from [cli.github.com](https://cli.github.com/) or, if you have Homebrew: `brew install gh`
+   - **Windows:** `winget install GitHub.cli` or download from the link above
+2. **Sign in (opens browser)**  
+   In a terminal, run:
+   ```bash
+   gh auth login
+   ```
+   - Choose **GitHub.com** → **HTTPS** → **Login with a web browser**. Copy the one-time code, press Enter; your browser will open. Paste the code and approve. Done.
+3. **Use it with Git**  
+   When asked “Authenticate Git with your GitHub credentials?”, choose **Yes**. After that, `git push` and `git pull` will use this login (no extra steps).
+4. **Push as usual**
+   ```bash
+   git push -u origin main
+   ```
+
+### Other sign-in options
+
+| Method | Steps |
+|--------|--------|
+| **SSH** | [Add an SSH key to GitHub](https://docs.github.com/en/authentication/connecting-to-github-with-ssh), then: `git remote set-url origin git@github.com:YashRaythatha/Adaptive_SAT.git` and run `git push`. |
+| **Personal Access Token** | [Create a token](https://github.com/settings/tokens) (classic, **repo** scope). When Git asks for password, paste the token (not your GitHub password). |
+
+If the remote already has different commits, use `git pull origin main --rebase` then `git push`, or `git push --force origin main` only if you intend to overwrite the remote branch.
 
 ---
 

@@ -7,12 +7,15 @@ import {
   ActivityIndicator,
   ScrollView,
   Alert,
+  Modal,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { ExamStackParamList } from '../navigation/types';
 import { api, ApiError } from '../api/client';
 import { theme } from '../theme';
 import { useLayout } from '../hooks/useLayout';
+import { Calculator } from '../components/Calculator';
 
 type Props = NativeStackScreenProps<ExamStackParamList, 'ExamSession'>;
 
@@ -42,6 +45,7 @@ export function ExamSessionScreen({ route, navigation }: Props) {
   const [breakEndsAt, setBreakEndsAt] = useState<string | null>(null);
   const [moduleSecondsRemaining, setModuleSecondsRemaining] = useState<number | null>(null);
   const [isEnding, setIsEnding] = useState(false);
+  const [calculatorVisible, setCalculatorVisible] = useState(false);
   const autoAdvanceRef = useRef(false);
 
   const loadQuestion = useCallback(async () => {
@@ -314,6 +318,15 @@ export function ExamSessionScreen({ route, navigation }: Props) {
           {currentSection} – Module {currentModule}
         </Text>
         <View style={styles.headerRight}>
+          {currentSection === 'MATH' && (
+            <TouchableOpacity
+              style={styles.calculatorButton}
+              onPress={() => setCalculatorVisible(true)}
+            >
+              <Ionicons name="calculator-outline" size={20} color={theme.colors.foreground} />
+              <Text style={styles.calculatorButtonText}>Calculator</Text>
+            </TouchableOpacity>
+          )}
           {moduleSecondsRemaining != null && (
             <Text style={[styles.timer, timerLow && styles.timerLow]}>
               {timerMins}:{String(timerSecs).padStart(2, '0')}
@@ -357,6 +370,32 @@ export function ExamSessionScreen({ route, navigation }: Props) {
           <Text style={styles.primaryButtonText}>Submit & next</Text>
         </TouchableOpacity>
       </View>
+
+      <Modal
+        visible={calculatorVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setCalculatorVisible(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setCalculatorVisible(false)}
+        >
+          <View
+            style={styles.modalContent}
+            onStartShouldSetResponder={() => true}
+          >
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Calculator</Text>
+              <TouchableOpacity onPress={() => setCalculatorVisible(false)} hitSlop={12}>
+                <Ionicons name="close" size={24} color={theme.colors.foreground} />
+              </TouchableOpacity>
+            </View>
+            <Calculator />
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </ScrollView>
   );
 }
@@ -433,4 +472,36 @@ const styles = StyleSheet.create({
   breakTitle: { ...theme.typography.title, marginBottom: 8, color: theme.colors.foreground },
   breakSubtitle: { ...theme.typography.small, color: theme.colors.mutedForeground, textAlign: 'center', marginBottom: 16 },
   breakTimer: { fontSize: 36, fontVariant: ['tabular-nums'], marginBottom: 24, color: theme.colors.examText },
+  calculatorButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  calculatorButtonText: { ...theme.typography.small, fontWeight: '500', color: theme.colors.foreground },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  modalContent: {
+    width: '100%',
+    maxWidth: 320,
+    backgroundColor: theme.colors.background,
+    borderRadius: theme.radius.xl,
+    padding: 16,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  modalTitle: { ...theme.typography.title2, color: theme.colors.foreground },
 });

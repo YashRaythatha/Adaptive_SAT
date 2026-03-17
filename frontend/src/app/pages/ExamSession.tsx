@@ -1,8 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import { motion } from 'motion/react';
-import { Trophy, TrendingUp, Target, Coffee, Clock } from 'lucide-react';
+import { Trophy, TrendingUp, Target, Coffee, Clock, Calculator as CalculatorIcon } from 'lucide-react';
 import { Layout } from '../components/Layout';
+import { Calculator } from '../components/Calculator';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '../components/ui/dialog';
 import { PageTitle, AnimatedCard } from '../components/AnimatedComponents';
 import { QuestionCard } from '../components/QuestionCard';
 import { ChoiceList } from '../components/ChoiceList';
@@ -71,6 +78,7 @@ export function ExamSession() {
   const [breakEndsAt, setBreakEndsAt] = useState<string | null>(null);
   const [breakSecondsRemaining, setBreakSecondsRemaining] = useState<number | null>(null);
   const [moduleSecondsRemaining, setModuleSecondsRemaining] = useState<number | null>(null);
+  const [calculatorOpen, setCalculatorOpen] = useState(false);
   const autoAdvanceOnExpiryRef = useRef(false);
 
   useEffect(() => {
@@ -500,6 +508,17 @@ export function ExamSession() {
               {currentSection} - Module {currentModule}
             </span>
             <div className="flex items-center gap-3">
+              {currentSection === 'MATH' && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCalculatorOpen(true)}
+                  className="gap-1.5"
+                >
+                  <CalculatorIcon className="w-4 h-4" aria-hidden />
+                  Calculator
+                </Button>
+              )}
               {moduleSecondsRemaining != null && (
                 <span
                   className={`flex items-center gap-1.5 text-sm font-mono font-medium ${
@@ -570,6 +589,15 @@ export function ExamSession() {
         confirmDisabled={isEnding}
         variant="danger"
       />
+
+      <Dialog open={calculatorOpen} onOpenChange={setCalculatorOpen}>
+        <DialogContent className="sm:max-w-xs" aria-describedby={undefined}>
+          <DialogHeader>
+            <DialogTitle>Calculator</DialogTitle>
+          </DialogHeader>
+          <Calculator />
+        </DialogContent>
+      </Dialog>
     </Layout>
   );
 }
