@@ -68,8 +68,8 @@ Adaptive_SAT/
 ### 1. Prerequisites
 
 - **Python 3.11+** (backend)
-- **Node.js 18+** (frontend)
-- **PostgreSQL** (local; create a database, e.g. `adaptive_sat`)
+- **Node.js 18+** (frontend + mobile)
+- **PostgreSQL** (create a database, e.g. `adaptive_sat`)
 
 ### 2. Database
 
@@ -112,12 +112,34 @@ Or from repo root: **Windows** `run_frontend.bat` · **macOS/Linux** `./run_fron
 
 - App: **http://localhost:3000**
 
-### 5. Running on macOS (e.g. Mac Mini)
+### 5. Mobile app (Expo / React Native)
 
-- Use the **shell scripts**: `./run_backend.sh` and `./run_frontend.sh` (from the repo root).
-- Activate the backend venv with `source backend/.venv/bin/activate` when running commands manually.
-- Install **PostgreSQL** if needed: `brew install postgresql@16` (or 15), then start the service and create the database (see **Database setup**).
-- Ensure **Python 3.11+** and **Node.js 18+** are installed (`brew install python@3.12 node` if using Homebrew).
+The mobile app lives in `mobile/` and uses the same backend API.
+
+1. Ensure the backend is running (Step 3 above).
+2. Create `mobile/.env` from the example and set the API URL:
+
+   ```bash
+   cd mobile
+   cp .env.example .env
+   ```
+
+   Common values for `EXPO_PUBLIC_API_URL`:
+   - iOS Simulator: `http://localhost:8000`
+   - Android Emulator: `http://10.0.2.2:8000`
+   - Physical device: `http://YOUR_COMPUTER_IP:8000` (same Wi‑Fi; allow port 8000 through firewall)
+
+3. Install and start Expo:
+
+   ```bash
+   npm install
+   npx expo start
+   ```
+
+   Then press:
+   - `w` for web (quickest smoke test)
+   - `i` for iOS Simulator (Xcode required)
+   - `a` for Android Emulator (Android Studio required)
 
 ### 6. First use
 
@@ -129,7 +151,7 @@ Or from repo root: **Windows** `run_frontend.bat` · **macOS/Linux** `./run_fron
 
 ## Database setup
 
-PostgreSQL must be running. Create a database named `adaptive_sat` (or another name and set it in `DATABASE_URL`).
+PostgreSQL must be running (locally or on another machine). Create a database named `adaptive_sat` (or another name and set it in `DATABASE_URL`).
 
 **Example (psql):**
 
@@ -142,6 +164,16 @@ Set in `backend/.env`:
 ```
 DATABASE_URL=postgresql://USER:PASSWORD@localhost:5432/adaptive_sat
 ```
+
+### Using PostgreSQL on another machine (e.g. DB on Windows, app on Mac)
+
+You do **not** need to install PostgreSQL on the Mac as a server. You only need network access to the Windows PostgreSQL server and a correct `DATABASE_URL`, e.g.:
+
+```
+DATABASE_URL=postgresql://USER:PASSWORD@WINDOWS_IP:5432/adaptive_sat
+```
+
+On the Windows machine, PostgreSQL must allow remote connections (listen address + `pg_hba.conf`) and the firewall must allow inbound TCP on port 5432 (or your configured port).
 
 If the password contains special characters (`@`, `#`, `%`), URL-encode them (e.g. `@` → `%40`). Then run:
 
@@ -281,49 +313,6 @@ See **backend/docs/RUNBOOK.md** for:
 - OpenAI / rate limits / judge failures
 - Admin 403 (X-ADMIN-KEY)
 - “No questions” or “No skills found” (seed skills, seed questions)
-
----
-
-## Pushing to GitHub
-
-Repo: [github.com/YashRaythatha/Adaptive_SAT](https://github.com/YashRaythatha/Adaptive_SAT)
-
-After making changes locally, commit and push:
-
-```bash
-git add -A
-git commit -m "Your message"
-git push -u origin main
-```
-
-### Browser-based login (recommended)
-
-Use **GitHub CLI** so Git opens your browser to sign in—no terminal password prompts.
-
-1. **Install GitHub CLI**
-   - **macOS:** Download from [cli.github.com](https://cli.github.com/) or, if you have Homebrew: `brew install gh`
-   - **Windows:** `winget install GitHub.cli` or download from the link above
-2. **Sign in (opens browser)**  
-   In a terminal, run:
-   ```bash
-   gh auth login
-   ```
-   - Choose **GitHub.com** → **HTTPS** → **Login with a web browser**. Copy the one-time code, press Enter; your browser will open. Paste the code and approve. Done.
-3. **Use it with Git**  
-   When asked “Authenticate Git with your GitHub credentials?”, choose **Yes**. After that, `git push` and `git pull` will use this login (no extra steps).
-4. **Push as usual**
-   ```bash
-   git push -u origin main
-   ```
-
-### Other sign-in options
-
-| Method | Steps |
-|--------|--------|
-| **SSH** | [Add an SSH key to GitHub](https://docs.github.com/en/authentication/connecting-to-github-with-ssh), then: `git remote set-url origin git@github.com:YashRaythatha/Adaptive_SAT.git` and run `git push`. |
-| **Personal Access Token** | [Create a token](https://github.com/settings/tokens) (classic, **repo** scope). When Git asks for password, paste the token (not your GitHub password). |
-
-If the remote already has different commits, use `git pull origin main --rebase` then `git push`, or `git push --force origin main` only if you intend to overwrite the remote branch.
 
 ---
 

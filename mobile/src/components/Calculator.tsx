@@ -83,7 +83,7 @@ export function Calculator() {
 
   const row = (items: Array<{ label: string; key: string; highlight?: boolean }>) => (
     <View key={items.map((i) => i.key).join('')} style={styles.row}>
-      {items.map(({ label, key, highlight }) => btn(label, key, !!highlight)}
+      {items.map(({ label, key, highlight }) => btn(label, key, !!highlight))}
     </View>
   );
 
