@@ -220,6 +220,17 @@ def generate_question(
                     correct_answer=data["correct_answer"],
                     explanation=data.get("explanation", ""),
                 )
+                # Validate minimum exam-quality constraints early so we don't waste judge retries
+                # on items that would later fail (e.g. choices shorter than 5 chars).
+                validation_errors = validate_question_content(
+                    parsed.question_text,
+                    parsed.choices,
+                    parsed.correct_answer,
+                    parsed.explanation or "",
+                )
+                if validation_errors:
+                    parsed = None
+                    continue
                 break
             except Exception:
                 continue

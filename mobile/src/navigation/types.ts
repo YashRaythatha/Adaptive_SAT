@@ -2,7 +2,7 @@ import type { NavigatorScreenParams } from '@react-navigation/native';
 
 export type MainTabParamList = {
   Dashboard: undefined;
-  Practice: undefined;
+  Practice: NavigatorScreenParams<PracticeStackParamList> | undefined;
   Exam: undefined;
   Progress: undefined;
   History: undefined;

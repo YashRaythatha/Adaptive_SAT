@@ -6,14 +6,14 @@ You are an expert SAT Math item writer. Create one multiple-choice question for 
 - Difficulty: {{difficulty}} (1=easiest, 5=hardest). Match complexity and steps to this level.
   - For difficulty 4 or 5: The problem must be genuinely hard. Use multi-step reasoning, systems of equations, inequalities, word problems with setup required, or non-routine algebra. Do NOT use a single simple equation like "solve 2x + 3 = 11"—those are difficulty 1–2.
   - For difficulty 5 only: The problem must be clearly harder than standard applications. Use one of:
-    (a) Advanced Math: Exponential or radical equations that require solving (e.g. solve 2^x = 5 using logarithms, or √(2x+1) + √(x+3) = 4). Do NOT use straightforward "growth/decay" plug-in (e.g. "population doubles every 5 years, find after 15 years")—that is difficulty 3–4.
-    (b) Geometry and Trigonometry: Multi-step geometry, compound figures, or trig equations/identities. Do NOT use a single rule (30-60-90 triangle, triangle inequality, area = ½bh, or "given two sides and angle find the third")—those are difficulty 3–4.
-    (c) Algebra: Same as (a)—exponentials, radicals, or rational equations with a real solving step; or quadratic with an extra constraint. Do NOT use a simple quadratic or system of two linear equations.
+    (a) Advanced Math: Exponential/radical/rational equations that require solving for an unknown that appears in an exponent or under a radical. For compound interest, it must ask for the unknown time or unknown principal/rate (so the solution requires more than just plugging into A = P(1+r)^t). Prefer logarithms or an equation that needs rearranging and domain/validity reasoning.
+    (b) Geometry and Trigonometry: Multi-step geometry/compound figures/trig where at least one intermediate measurement must be derived from other given information. Do NOT use a single direct volume/area formula with all necessary measurements given (e.g. avoid a cone volume problem where radius and height are directly provided with no intermediate solving).
+    (c) Algebra: Rational equations with domain restrictions and a real solving step, radical equations with extraneous-root checking, or exponent/ logarithm solving; or a quadratic with an extra constraint. Do NOT use a simple system of two linear equations as the only substantive work.
   - For difficulty 5: REQUIRED complexity checklist (must satisfy at least 2 bullets):
     - Requires at least 2 distinct algebraic steps after setup (not just plug-and-chug).
     - Uses logarithms OR a radical equation OR a rational equation with domain restriction(s) OR a trig identity/equation.
     - Includes a non-obvious constraint (e.g. “positive solutions only”, parameter constraint, extraneous root check, or geometric constraint).
-    - Cannot be solved by a single memorized rule (avoid single-step Pythagorean theorem, single area formula, or one direct proportion).
+    - Cannot be solved by a single memorized rule or one-step plug-in (avoid single direct formula application; require at least one intermediate algebra step or derived quantity).
   - For difficulty 1: Even easy items need full question text (50+ characters) and full choices (at least 5 characters each). Use a variety of simple scenarios (not only "store sells X and Y"); vary quantities and unknowns (e.g. different equations, different shapes).
 - Diversity: Create a distinct question—use a different scenario, context, or problem type from what you might have seen before (e.g. avoid another "store sells apples/pencils" or "solve 2x + 3 = 11" style item if similar ones already exist). Vary contexts (e.g. store, travel, geometry, science, real-world setup) and numbers; do not only rephrase the same problem.
 - Exactly 4 answer choices labeled A, B, C, D. One correct answer.
@@ -25,7 +25,8 @@ You are an expert SAT Math item writer. Create one multiple-choice question for 
 ## Self-check (do this BEFORE you answer)
 - If difficulty is 5, confirm your item satisfies the REQUIRED checklist above. If not, regenerate internally and only output a compliant item.
 - Verify choices A–D are all 5+ characters and are not bare numbers.
-- Verify the explanation has no calculation errors and supports the correct answer.
+- Verify the explanation has no calculation errors and supports the correct answer. The numeric or algebraic value stated in the explanation as the solution must match the text of the correct choice exactly (e.g. if the correct choice says "48π cubic units", the explanation must derive 48π cubic units, not 36π or 48/2π). The explanation must derive that same final value from the setup (not just guess it).
+  If the problem involves units, counts, or "whole number" constraints, the explanation must yield that type (e.g. integer solutions only; no rounding to a non-integer for "number of items").
 
 ## Output format (strict)
 You must respond with ONLY a single JSON object. No markdown code fences, no text before or after the JSON, no explanation. Copy the structure exactly:

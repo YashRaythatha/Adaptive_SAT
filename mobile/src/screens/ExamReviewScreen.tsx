@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   ScrollView,
 } from 'react-native';
+import { api, ApiError } from '../api/client';
 import type { ExamReviewResponse, ExamReviewQuestion } from '../api/client';
 
 /** Used in both Exam stack and History stack; both pass { sessionId: string }. */
@@ -29,7 +30,7 @@ export function ExamReviewScreen({ route, navigation }: Props) {
     api
       .getExamReview(sessionId)
       .then(setReview)
-      .catch((e) => setError(e instanceof ApiError ? e.message : 'Failed to load review'))
+      .catch((e: unknown) => setError(e instanceof ApiError ? e.message : 'Failed to load review'))
       .finally(() => setLoading(false));
   }, [sessionId]);
 
